@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  CircleUserRound,
+  // CircleUserRound,
   Clock,
   Eye,
   MessageCircle,
@@ -28,13 +28,13 @@ export default function Forum() {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const storedUser = localStorage.getItem("user");
-  let currentUser = null;
+  // let currentUser = null;
 
   if (storedUser) {
     try {
-      currentUser = JSON.parse(storedUser);
+      // currentUser = JSON.parse(storedUser);
     } catch {
-      currentUser = null;
+      // currentUser = null;
     }
   }
 
