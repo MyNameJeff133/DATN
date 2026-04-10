@@ -229,6 +229,10 @@ export const deleteUser = async (req, res) => {
 
 export const approveUser = async (req, res) => {
   try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Khong co quyen" });
+    }
+
     const user = await User.findById(req.params.id);
 
     if (!user) {

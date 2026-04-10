@@ -18,7 +18,11 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  verificationToken: String
+  verificationToken: String,
+  isApproved: {
+    type: Boolean,
+    default: false
+  }
 
 });
 export default mongoose.model("User", userSchema);

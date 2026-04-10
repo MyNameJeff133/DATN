@@ -30,15 +30,4 @@ const drugSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// để search nhanh
-drugSchema.index({ name: 1 });
-
-//   // Thuốc thuộc về ai
-//   owner: {
-//     type: mongoose.Schema.Types.ObjectId,
-//     ref: "User",
-//     default: null, // null = thuốc hệ thống do admin tạo
-//   }
-
-// }, { timestamps: true });
 export default mongoose.model("Drug", drugSchema);
