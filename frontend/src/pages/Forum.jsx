@@ -69,7 +69,7 @@ export default function Forum() {
     }
 
     if (!formData.title.trim() || !formData.content.trim()) {
-      setFormError("Vui long nhap day du tieu de va noi dung bai viet");
+      setFormError("Vui lòng nhập đầy đủ tiêu đề và nội dung bài viết");
       setFormSuccess("");
       return;
     }
@@ -86,7 +86,7 @@ export default function Forum() {
 
       setPosts((prev) => [res.data, ...prev]);
       setFormData({ title: "", content: "" });
-      setFormSuccess("Dang bai thanh cong");
+      setFormSuccess("Đăng bài thành công");
     } catch (error) {
       if (error.response?.status === 401) {
         navigate("/login");
@@ -94,7 +94,7 @@ export default function Forum() {
       }
 
       setFormError(
-        error.response?.data?.message || "Khong the dang bai viet luc nay"
+        error.response?.data?.message || "Không thể đăng bài viết lúc này"
       );
     } finally {
       setSubmitting(false);

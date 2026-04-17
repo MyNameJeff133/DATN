@@ -1,19 +1,10 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import {
+  drugCategoryOptions,
+  getCategoryLabel,
+} from "../constants/medicalData";
 import api from "../services/api";
-
-const drugCategories = [
-  { value: "khang_sinh", label: "Kháng sinh" },
-  { value: "giam_dau", label: "Giảm đau" },
-  { value: "ha_sot", label: "Hạ sốt" },
-  { value: "tim_mach", label: "Tim mạch" },
-  { value: "noi_tiet", label: "Nội tiết" },
-  { value: "tieu_hoa", label: "Tiêu hóa" },
-  { value: "than_kinh", label: "Thần kinh" },
-  { value: "co_xuong_khop", label: "Cơ xương khớp" },
-  { value: "da_lieu", label: "Da liệu" },
-  { value: "khac", label: "Khác" },
-];
 
 export default function Drugs() {
   const [drugs, setDrugs] = useState([]);
@@ -32,7 +23,7 @@ export default function Drugs() {
     const id = searchParams.get("id");
 
     if (id && drugs.length > 0) {
-      const found = drugs.find((d) => d._id === id);
+      const found = drugs.find((drug) => drug._id === id);
       if (found) setSelectedDrug(found);
     }
   }, [searchParams, drugs]);
@@ -51,7 +42,10 @@ export default function Drugs() {
 
   const totalPages = Math.ceil(filteredDrugs.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedDrugs = filteredDrugs.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedDrugs = filteredDrugs.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -65,8 +59,8 @@ export default function Drugs() {
           type="text"
           placeholder="Tìm theo tên thuốc..."
           value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
+          onChange={(event) => {
+            setSearchTerm(event.target.value);
             setCurrentPage(1);
           }}
           className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none"
@@ -74,16 +68,16 @@ export default function Drugs() {
 
         <select
           value={selectedCategory}
-          onChange={(e) => {
-            setSelectedCategory(e.target.value);
+          onChange={(event) => {
+            setSelectedCategory(event.target.value);
             setCurrentPage(1);
           }}
           className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none"
         >
           <option value="">Tất cả danh mục</option>
-          {drugCategories.map((cat) => (
-            <option key={cat.value} value={cat.value}>
-              {cat.label}
+          {drugCategoryOptions.map((category) => (
+            <option key={category.value} value={category.value}>
+              {category.label}
             </option>
           ))}
         </select>
@@ -106,11 +100,15 @@ export default function Drugs() {
               )}
 
               <div className="p-5">
-                <h3 className="text-xl font-semibold text-gray-900">{drug.name}</h3>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  {drug.name}
+                </h3>
                 <span className="mt-3 inline-block rounded bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">
-                  {drugCategories.find((c) => c.value === drug.category)?.label || "Khac"}
+                  {getCategoryLabel(drugCategoryOptions, drug.category)}
                 </span>
-                <p className="mt-3 line-clamp-2 text-sm text-gray-600">{drug.usage}</p>
+                <p className="mt-3 line-clamp-2 text-sm text-gray-600">
+                  {drug.usage}
+                </p>
               </div>
             </div>
           ))
@@ -128,7 +126,7 @@ export default function Drugs() {
             disabled={currentPage === 1}
             className="rounded border px-4 py-2 text-sm disabled:opacity-50"
           >
-            Truoc
+            Trước
           </button>
 
           {Array.from({ length: totalPages }, (_, index) => (
@@ -163,7 +161,9 @@ export default function Drugs() {
               x
             </button>
 
-            <h3 className="mb-4 text-2xl font-bold text-gray-900">{selectedDrug.name}</h3>
+            <h3 className="mb-4 text-2xl font-bold text-gray-900">
+              {selectedDrug.name}
+            </h3>
 
             {selectedDrug.image && (
               <img
@@ -174,19 +174,22 @@ export default function Drugs() {
             )}
 
             <p className="mb-2">
-              <strong>Danh muc:</strong> {selectedDrug.category}
+              <strong>Danh mục:</strong>{" "}
+              {getCategoryLabel(drugCategoryOptions, selectedDrug.category)}
             </p>
             <p className="mb-3">
-              <strong>Cong dung:</strong> {selectedDrug.usage}
+              <strong>Công dụng:</strong> {selectedDrug.usage}
             </p>
             <p className="mb-3">
-              <strong>Lieu dung:</strong> {selectedDrug.dosage}
+              <strong>Lượng dùng:</strong> {selectedDrug.dosage}
             </p>
             <p className="mb-3">
-              <strong>Tac dung phu:</strong> {selectedDrug.sideEffects?.join(", ")}
+              <strong>Tác dụng phụ:</strong>{" "}
+              {selectedDrug.sideEffects?.join(", ")}
             </p>
             <p className="mb-3">
-              <strong>Chong chi dinh:</strong> {selectedDrug.contraindications?.join(", ")}
+              <strong>Chống chỉ định:</strong>{" "}
+              {selectedDrug.contraindications?.join(", ")}
             </p>
           </div>
         </div>

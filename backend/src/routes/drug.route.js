@@ -1,4 +1,5 @@
 import express from "express";
+import authMiddleware, { verifyAdmin } from "../middleware/auth.middleware.js";
 import {
   getAllDrugs,
   createDrug,
@@ -6,21 +7,11 @@ import {
   deleteDrug,
 } from "../controllers/drug.controller.js";
 
-
 const router = express.Router();
 
-/* ========= Public ========= */
-
-// Ai cũng tra cứu được
-// router.get("/", getAllDrugs);
-// router.get("/search", searchDrug);
-// router.get("/:id", getDrugById);
-
-
-/* ========= Protected ========= */
 router.get("/", getAllDrugs);
-router.post("/", createDrug);
-router.put("/:id", updateDrug);
-router.delete("/:id", deleteDrug);
+router.post("/", authMiddleware, verifyAdmin, createDrug);
+router.put("/:id", authMiddleware, verifyAdmin, updateDrug);
+router.delete("/:id", authMiddleware, verifyAdmin, deleteDrug);
 
 export default router;

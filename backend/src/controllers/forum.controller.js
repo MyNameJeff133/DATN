@@ -1,5 +1,6 @@
 import ForumPost from "../models/ForumPost.js";
 import Comment from "../models/Comment.js";
+import User from "../models/User.js";
 
 const attachCommentCounts = async (posts) => {
   const validPosts = posts.filter(Boolean);
@@ -202,7 +203,7 @@ export const getReportedPosts = async (req, res) => {
     const posts = await ForumPost.find({
       $or: [{ status: "reported" }, { "reports.0": { $exists: true } }],
     })
-      .populate("author", "name email")
+      .populate("author", "name email violationCount isBanned")
       .populate("reports.user", "name email")
       .sort({ updatedAt: -1 });
 
@@ -219,15 +220,35 @@ export const moderatePost = async (req, res) => {
   try {
     const { action } = req.body;
     const post = await ForumPost.findById(req.params.id)
-      .populate("author", "name email")
+      .populate("author", "name email violationCount isBanned")
       .populate("reports.user", "name email");
 
     if (!post) {
       return res.status(404).json({ message: "Khong tim thay bai viet" });
     }
 
+    let affectedUser = null;
+
     if (action === "hide") {
       post.status = "hidden";
+
+      const author = await User.findById(post.author?._id || post.author);
+      if (author && author.role !== "admin") {
+        author.violationCount = (author.violationCount || 0) + 1;
+
+        if (author.violationCount > 3) {
+          author.isBanned = true;
+          author.banReason = "Dang bai viet vi pham qua 3 lan";
+          author.bannedAt = new Date();
+        }
+
+        await author.save();
+        affectedUser = {
+          id: author._id,
+          violationCount: author.violationCount,
+          isBanned: author.isBanned,
+        };
+      }
     } else if (action === "restore") {
       post.status = "active";
       post.reports = [];
@@ -242,8 +263,11 @@ export const moderatePost = async (req, res) => {
 
     const postWithCount = await enrichSinglePost(post);
     res.json({
-      message: "Cap nhat bai viet thanh cong",
+      message: affectedUser?.isBanned
+        ? "Cap nhat bai viet thanh cong va tai khoan da bi khoa do vi pham qua 3 lan"
+        : "Cap nhat bai viet thanh cong",
       post: postWithCount,
+      affectedUser,
     });
   } catch (error) {
     console.error("Moderate post error:", error);

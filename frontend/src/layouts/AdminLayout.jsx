@@ -6,6 +6,7 @@ import {
   Pill,
   Users,
 } from "lucide-react";
+import { jwtDecode } from "jwt-decode";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 const menuItems = [
@@ -39,6 +40,16 @@ const menuItems = [
 export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const token = localStorage.getItem("token");
+  let role = "admin";
+
+  if (token) {
+    try {
+      role = jwtDecode(token).role || "admin";
+    } catch {
+      role = "admin";
+    }
+  }
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -52,8 +63,17 @@ export default function AdminLayout() {
         <aside className="w-64 bg-gray-900 px-5 py-6 text-white">
           <div className="mb-8">
             <h1 className="text-xl font-bold">Ur Pharmacy</h1>
-            <p className="mt-1 text-sm text-gray-400">Admin panel</p>
+            <p className="mt-1 text-sm text-gray-400">
+              {role === "moderator" ? "Moderator panel" : "Admin panel"}
+            </p>
           </div>
+
+          {role === "moderator" && (
+            <div className="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs leading-5 text-amber-100">
+              Bạn có thể xử lý bài viết vi phạm và xem dữ liệu hệ thống. Các thao
+              tác có thể thực hiện như quản lý thuốc, bệnh và người dùng sẽ ở chế độ chỉ xem.
+            </div>
+          )}
 
           <nav className="space-y-2">
             {menuItems.map((item) => {

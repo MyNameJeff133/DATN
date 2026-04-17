@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema({
 
   role: {
     type: String,
-    enum: ["user", "admin"],
+    enum: ["user", "moderator", "admin"],
     default: "user"
   },
 
@@ -22,7 +22,23 @@ const userSchema = new mongoose.Schema({
   isApproved: {
     type: Boolean,
     default: false
+  },
+  isBanned: {
+    type: Boolean,
+    default: false
+  },
+  banReason: {
+    type: String,
+    default: ""
+  },
+  bannedAt: {
+    type: Date,
+    default: null
+  },
+  violationCount: {
+    type: Number,
+    default: 0
   }
-
 });
+
 export default mongoose.model("User", userSchema);

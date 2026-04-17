@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 const initialPasswordData = {
@@ -15,13 +16,15 @@ const initialShowPassword = {
 };
 
 export default function Profile() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState("info");
-  const [user, setUser] = useState({ name: "", email: "" });
+  const [user, setUser] = useState({ name: "", email: "", role: "" });
   const [editing, setEditing] = useState(false);
   const [errors, setErrors] = useState({});
   const [profileError, setProfileError] = useState("");
   const [passwordData, setPasswordData] = useState(initialPasswordData);
   const [showPassword, setShowPassword] = useState(initialShowPassword);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -34,6 +37,7 @@ export default function Profile() {
       setUser({
         name: res.data?.name || "",
         email: res.data?.email || "",
+        role: res.data?.role || "",
       });
     } catch (err) {
       setProfileError(
@@ -54,6 +58,7 @@ export default function Profile() {
       setUser({
         name: res.data?.name || "",
         email: res.data?.email || "",
+        role: res.data?.role || "",
       });
       setEditing(false);
       alert("Cập nhật thành công");
@@ -119,6 +124,28 @@ export default function Profile() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (
+      !window.confirm(
+       "Bạn chắc chắn muốn xóa tài khoản? Toàn bộ bài viết, bình luận và lịch sử chat liên quan sẽ bị xóa."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setDeleteLoading(true);
+      await api.delete("/auth/profile");
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      navigate("/", { replace: true });
+    } catch (err) {
+      setProfileError(err.response?.data?.message || "Không thể xóa tài khoản");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
       <div className="rounded-xl bg-white p-6 shadow-sm">
@@ -175,12 +202,21 @@ export default function Profile() {
             )}
 
             {!editing ? (
-              <button
-                onClick={() => setEditing(true)}
-                className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white"
-              >
-                Chỉnh sửa
-              </button>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => setEditing(true)}
+                  className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white"
+                >
+                  Chỉnh sửa
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deleteLoading}
+                  className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                >
+                  {deleteLoading ? "Đang xóa..." : "Xóa tài khoản"}
+                </button>
+              </div>
             ) : (
               <div className="flex gap-3">
                 <button

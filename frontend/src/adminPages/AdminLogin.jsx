@@ -15,8 +15,8 @@ export default function AdminLogin() {
     try {
       const res = await api.post("/auth/admin-login", { email, password });
 
-      if (res.data.user?.role !== "admin") {
-        setError("Tai khoan nay khong co quyen admin");
+      if (!["admin", "moderator"].includes(res.data.user?.role)) {
+        setError("Tài khoản này không có quyền truy cập khu vực quản trị");
         return;
       }
 
@@ -28,7 +28,7 @@ export default function AdminLogin() {
       navigate("/admin/dashboard");
     } catch (loginError) {
       setError(
-        loginError.response?.data?.message || "Sai tai khoan hoac mat khau"
+        loginError.response?.data?.message || "Sai tài khoản hoặc mật khẩu"
       );
     }
   };
@@ -36,9 +36,9 @@ export default function AdminLogin() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-md">
-        <h1 className="text-2xl font-bold text-gray-900">Admin Login</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Đăng nhập quản trị</h1>
         <p className="mt-2 text-sm text-gray-500">
-          Dang nhap vao khu vuc quan tri cua he thong.
+          Admin và kiểm duyệt viên đều đăng nhập tại đây.
         </p>
 
         <form onSubmit={handleLogin} className="mt-6 space-y-4">
@@ -57,11 +57,11 @@ export default function AdminLogin() {
 
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">
-              Mat khau
+              Mật khẩu
             </label>
             <input
               type="password"
-              placeholder="Nhap mat khau"
+              placeholder="Nhập mật khẩu"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-blue-500"
@@ -78,7 +78,7 @@ export default function AdminLogin() {
             type="submit"
             className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700"
           >
-            Dang nhap
+            Đăng nhập
           </button>
         </form>
       </div>

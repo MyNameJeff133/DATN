@@ -3,6 +3,7 @@ import {
   ArrowUpRight,
   Bot,
   Pill,
+  RotateCcw,
   SendHorizontal,
   Sparkles,
   Stethoscope,
@@ -15,62 +16,175 @@ const starterPrompts = [
   "Ho kéo dài có thể liên quan đến bệnh gì?",
 ];
 
+const guestStorageKey = "guest_chatbot_messages";
+
+const defaultMessages = [
+  {
+    id: "welcome",
+    sender: "bot",
+    text: "Xin chào. Tôi có thể hỗ trợ tìm thông tin bệnh và thuốc thông dụng. Bạn có thể mô tả triệu chứng hoặc nhập tên thuốc.",
+  },
+];
+
+const withLocalIds = (messages = []) =>
+  messages.map((message, index) => ({
+    id:
+      message.id ||
+      `${message.sender}-${message.createdAt || Date.now()}-${index}`,
+    sender: message.sender,
+    text: message.text,
+    createdAt: message.createdAt,
+  }));
+
 export default function Chatbot() {
-  const [messages, setMessages] = useState([
-    {
-      id: "welcome",
-      sender: "bot",
-      text: "Xin chào. Tôi có thể hỗ trợ tìm thông tin bệnh và thuốc thông dụng. Bạn có thể mô tả triệu chứng hoặc nhập tên thuốc.",
-    },
-  ]);
+  const [messages, setMessages] = useState(defaultMessages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [historyNote, setHistoryNote] = useState("");
   const messagesEndRef = useRef(null);
+  const sendingRef = useRef(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, loading]);
 
-  const pushUserMessage = (text) => {
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `${Date.now()}-user`,
-        sender: "user",
-        text,
-      },
-    ]);
-  };
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const loggedIn = Boolean(token);
+    setIsLoggedIn(loggedIn);
 
-  const pushBotMessage = (text) => {
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `${Date.now()}-bot`,
-        sender: "bot",
+    const loadMessages = async () => {
+      if (loggedIn) {
+        try {
+          const res = await api.get("/chatbot/history");
+          const historyMessages =
+            res.data?.messages?.length > 0
+              ? withLocalIds(res.data.messages)
+              : defaultMessages;
+
+          setMessages(historyMessages);
+          setHistoryNote("Đã đăng nhập: lịch sử chat được lưu trong 3 ngày.");
+        } catch (error) {
+          console.error("Load chat history error:", error);
+          setMessages(defaultMessages);
+          setHistoryNote("Không tải được lịch sử chat, đang dùng phiên tạm thời.");
+        } finally {
+          setInitialized(true);
+        }
+
+        return;
+      }
+
+      const savedGuestMessages = sessionStorage.getItem(guestStorageKey);
+
+      if (savedGuestMessages) {
+        try {
+          setMessages(withLocalIds(JSON.parse(savedGuestMessages)));
+        } catch {
+          setMessages(defaultMessages);
+        }
+      } else {
+        setMessages(defaultMessages);
+      }
+
+      setHistoryNote("Khách: lịch sử chat chỉ được giữ trong phiên hiện tại.");
+      setInitialized(true);
+    };
+
+    loadMessages();
+  }, []);
+
+  useEffect(() => {
+    if (!initialized || isLoggedIn) return;
+
+    sessionStorage.setItem(
+      guestStorageKey,
+      JSON.stringify(messages.map(({ sender, text, createdAt }) => ({
+        sender,
         text,
-      },
-    ]);
+        createdAt,
+      }))),
+    );
+  }, [initialized, isLoggedIn, messages]);
+
+  const clearConversation = async () => {
+    if (loading) return;
+
+    if (isLoggedIn) {
+      try {
+        await api.delete("/chatbot/history");
+      } catch (error) {
+        console.error("Clear chat history error:", error);
+      }
+    } else {
+      sessionStorage.removeItem(guestStorageKey);
+    }
+
+    setMessages(defaultMessages);
   };
 
   const sendMessage = async (presetMessage) => {
     const content = (presetMessage ?? input).trim();
-    if (!content || loading) return;
+    if (!content || loading || sendingRef.current) return;
 
-    pushUserMessage(content);
+    sendingRef.current = true;
+
+    const userMessage = {
+      id: `${Date.now()}-user`,
+      sender: "user",
+      text: content,
+      createdAt: new Date().toISOString(),
+    };
+    const nextMessages = [...messages, userMessage];
+
+    setMessages(nextMessages);
     setInput("");
     setLoading(true);
 
     try {
-      const res = await api.post("/chatbot", { message: content });
-      pushBotMessage(res.data.reply);
+      const res = await api.post("/chatbot", {
+        message: content,
+        messages: messages.map(({ sender, text, createdAt }) => ({
+          sender,
+          text,
+          createdAt,
+        })),
+      });
+
+      const serverMessages =
+        res.data?.messages?.length > 0
+          ? withLocalIds(res.data.messages)
+          : [
+              ...nextMessages,
+              {
+                id: `${Date.now()}-bot`,
+                sender: "bot",
+                text: res.data.reply,
+                createdAt: new Date().toISOString(),
+              },
+            ];
+
+      setMessages(serverMessages);
     } catch (error) {
-      pushBotMessage(
+      const fallbackReply =
         error.response?.data?.error ||
-          "Có lỗi xảy ra khi kết nối đến máy chủ. Bạn thử lại sau nhé."
-      );
+        error.response?.data?.message ||
+        "Có lỗi xảy ra khi kết nối đến máy chủ. Bạn thử lại sau nhé.";
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-bot-error`,
+          sender: "bot",
+          text: fallbackReply,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
     } finally {
       setLoading(false);
+      sendingRef.current = false;
     }
   };
 
@@ -84,16 +198,24 @@ export default function Chatbot() {
             </div>
 
             <div>
-              <p className="text-base font-semibold text-gray-900">Chatbot sức khỏe</p>
+              <p className="text-base font-semibold text-gray-900">
+                Chatbot sức khỏe
+              </p>
               <p className="mt-1 text-sm text-gray-500">
                 Tra cứu nhanh một số thông tin bệnh và thuốc.
               </p>
+              <p className="mt-1 text-xs text-gray-400">{historyNote}</p>
             </div>
           </div>
 
-          <div className="hidden rounded bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500 md:block">
-            online
-          </div>
+          <button
+            onClick={clearConversation}
+            disabled={loading}
+            className="inline-flex items-center gap-1 rounded bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500 hover:bg-gray-200 disabled:opacity-60"
+          >
+            <RotateCcw size={12} />
+            Xóa chat
+          </button>
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -116,13 +238,15 @@ export default function Chatbot() {
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto bg-gray-50 px-4 py-5">
-        {messages.map((msg) => {
-          const isUser = msg.sender === "user";
+        {messages.map((message) => {
+          const isUser = message.sender === "user";
 
           return (
             <div
-              key={msg.id}
-              className={`flex items-end gap-2 ${isUser ? "justify-end" : "justify-start"}`}
+              key={message.id}
+              className={`flex items-end gap-2 ${
+                isUser ? "justify-end" : "justify-start"
+              }`}
             >
               {!isUser && (
                 <div className="mb-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
@@ -132,7 +256,9 @@ export default function Chatbot() {
 
               <div
                 className={`max-w-[88%] rounded-xl px-4 py-3 text-sm leading-6 ${
-                  isUser ? "bg-blue-600 text-white" : "border bg-white text-gray-700"
+                  isUser
+                    ? "bg-blue-600 text-white"
+                    : "border bg-white text-gray-700"
                 }`}
               >
                 <div
@@ -153,7 +279,7 @@ export default function Chatbot() {
                   )}
                 </div>
 
-                <p className="whitespace-pre-line">{msg.text}</p>
+                <p className="whitespace-pre-line">{message.text}</p>
               </div>
             </div>
           );
@@ -187,10 +313,15 @@ export default function Chatbot() {
             <textarea
               rows={1}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (
+                  event.key === "Enter" &&
+                  !event.shiftKey &&
+                  !event.repeat &&
+                  !event.nativeEvent.isComposing
+                ) {
+                  event.preventDefault();
                   sendMessage();
                 }
               }}

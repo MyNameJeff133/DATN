@@ -11,12 +11,12 @@ export default function AdminRoute({ children }) {
   try {
     const decoded = jwtDecode(token);
 
-    if (decoded.role !== "admin") {
+    if (!["admin", "moderator"].includes(decoded.role)) {
       return <Navigate to="/" />;
     }
 
     return children;
-  } catch (error) {
+  } catch {
     return <Navigate to="/" />;
   }
 }

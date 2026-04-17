@@ -9,66 +9,46 @@ const diseaseSchema = new mongoose.Schema(
     },
     description: { type: String },
     image: { type: String },
-
-    // Nhóm bệnh (theo phân loại y khoa)
     category: {
       type: String,
       enum: [
-        "tim_mach", // Tim mạch
-        "ho_hap", // Hô hấp
-        "noi_tiet_chuyen_hoa", // Nội tiết - chuyển hóa
-        "tieu_hoa", // Tiêu hóa
-        "co_xuong_khop", // Cơ xương khớp
-        "truyen_nhiem", // Truyền nhiễm
-        "ung_thu", // Ung thư
-        "tam_than", // Tâm thần - hành vi
-        "than_kinh", // Thần kinh
-        "da_lieu", // Da và mô dưới da
-        "sinh_duc_tiet_nieu", // Sinh dục - tiết niệu
-        "benh_nghe_nghiep", // Bệnh nghề nghiệp
+        "tim_mach",
+        "ho_hap",
+        "noi_tiet_chuyen_hoa",
+        "tieu_hoa",
+        "co_xuong_khop",
+        "truyen_nhiem",
+        "ung_thu",
+        "tam_than",
+        "than_kinh",
+        "da_lieu",
+        "sinh_duc_tiet_nieu",
+        "benh_nghe_nghiep",
         "khac",
       ],
       default: "khac",
     },
-
-    // Danh sách triệu chứng
     symptoms: {
       type: [String],
       required: true,
     },
-
-    // Nguyên nhân
     causes: {
       type: String,
       default: "",
     },
-
-    // Điều trị
     treatment: {
       type: String,
       default: "",
     },
-
-    // Phòng ngừa
     prevention: {
       type: String,
       default: "",
     },
-
-    // Mức độ nguy hiểm
     severity: {
       type: String,
       enum: ["low", "medium", "high"],
       default: "low",
     },
-
-    // Thuốc liên quan
-    relatedDrugs: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Drug",
-      },
-    ],
   },
   {
     timestamps: true,

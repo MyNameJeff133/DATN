@@ -1,25 +1,16 @@
 import { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
+import {
+  diseaseCategoryOptions,
+  getCategoryLabel,
+  severityOptions,
+} from "../constants/medicalData";
+import SeverityBadge from "../pages/SeverityBadge";
 import api from "../services/api";
-
-const categoryOptions = {
-  tim_mach: "Tim mạch",
-  ho_hap: "Hô hấp",
-  noi_tiet_chuyen_hoa: "Nội tiết - chuyển hóa",
-  tieu_hoa: "Tiêu hóa",
-  co_xuong_khop: "Cơ xương khớp",
-  truyen_nhiem: "Truyền nhiễm",
-  ung_thu: "Ung thư",
-  tam_than: "Tâm thần",
-  than_kinh: "Thần kinh",
-  da_lieu: "Da liệu",
-  sinh_duc_tiet_nieu: "Sinh dục - tiết niệu",
-  khac: "Khác",
-};
 
 const emptyForm = {
   name: "",
-  category: "khác",
+  category: "khac",
   symptoms: "",
   causes: "",
   treatment: "",
@@ -37,6 +28,13 @@ export default function AdminDiseases() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
+  const [selectedLetter, setSelectedLetter] = useState("");
+
+  const isAdmin = user?.role === "admin";
+
+  const alphabet = Array.from({ length: 26 }, (_, i) =>
+    String.fromCharCode(65 + i),
+  );
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -50,8 +48,12 @@ export default function AdminDiseases() {
   }, []);
 
   const fetchDiseases = async () => {
-    const res = await api.get("/diseases");
-    setDiseases(res.data);
+    try {
+      const res = await api.get("/diseases");
+      setDiseases(res.data);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   useEffect(() => {
@@ -59,189 +61,358 @@ export default function AdminDiseases() {
   }, []);
 
   const openAddModal = () => {
+    if (!isAdmin) return;
     setEditingId(null);
     setFormData(emptyForm);
     setShowModal(true);
   };
 
   const handleEdit = (disease) => {
+    if (!isAdmin) return;
     setEditingId(disease._id);
     setFormData({
-      ...disease,
-      symptoms: disease.symptoms.join(", "),
+      name: disease.name || "",
+      category: disease.category || "khac",
+      symptoms: Array.isArray(disease.symptoms)
+        ? disease.symptoms.join(", ")
+        : "",
+      causes: disease.causes || "",
+      treatment: disease.treatment || "",
+      prevention: disease.prevention || "",
+      severity: disease.severity || "low",
+      description: disease.description || "",
+      image: disease.image || "",
     });
     setShowModal(true);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!isAdmin) return;
 
     const payload = {
       ...formData,
-      symptoms: formData.symptoms.split(",").map((s) => s.trim()),
+      symptoms: formData.symptoms
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
     };
 
-    if (editingId) {
-      await api.put(`/diseases/${editingId}`, payload);
-    } else {
-      await api.post("/diseases", payload);
-    }
+    try {
+      if (editingId) {
+        await api.put(`/diseases/${editingId}`, payload);
+      } else {
+        await api.post("/diseases", payload);
+      }
 
-    setShowModal(false);
-    fetchDiseases();
+      setShowModal(false);
+      setFormData(emptyForm);
+      fetchDiseases();
+    } catch (error) {
+      console.error(error);
+      alert("Co loi xay ra khi luu benh.");
+    }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Xoa benh nay?")) {
+    if (!isAdmin) return;
+    if (!window.confirm("Xoa benh nay?")) return;
+
+    try {
       await api.delete(`/diseases/${id}`);
       fetchDiseases();
+    } catch (error) {
+      console.error(error);
+      alert("Khong the xoa benh.");
     }
   };
 
-  const filteredDiseases = diseases.filter((d) => {
-    const matchSearch = d.name.toLowerCase().includes(search.toLowerCase());
-    const matchCategory =
-      filterCategory === "all" || d.category === filterCategory;
+  const normalize = (str) =>
+    str
+      ?.normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase();
 
-    return matchSearch && matchCategory;
+  const filteredDiseases = diseases.filter((disease) => {
+    const name = disease.name || "";
+
+    const matchesSearch = name.toLowerCase().includes(search.toLowerCase());
+
+    const matchesCategory =
+      filterCategory === "all" || disease.category === filterCategory;
+
+    const matchesAlphabet =
+      !selectedLetter || normalize(name).startsWith(selectedLetter);
+
+    return matchesSearch && matchesCategory && matchesAlphabet;
   });
 
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Quản lý bệnh lý</h1>
-        <p className="mt-2 text-gray-60">Thêm, sửa và lọc danh sách bệnh.</p>
+        <h1 className="text-3xl font-bold text-gray-900">Quan ly benh ly</h1>
+        <p className="mt-2 text-gray-600">
+          {isAdmin
+            ? "Them, sua va dong bo du lieu benh voi trang tra cuu."
+            : "Kiem duyet vien chi co quyen xem du lieu benh."}
+        </p>
       </div>
+
+      {!isAdmin && (
+        <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+          Ban dang o che do chi xem. Chi admin moi duoc them, sua va xoa benh.
+        </div>
+      )}
 
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <input
           type="text"
-          placeholder="Tìm kiếm tên bệnh..."
+          placeholder="Tim kiem ten benh..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none md:max-w-md"
+          onChange={(event) => setSearch(event.target.value)}
+          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm md:max-w-md"
         />
 
         <div className="flex gap-3">
           <select
             value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm"
+            onChange={(event) => setFilterCategory(event.target.value)}
+            className="rounded-lg border border-gray-300 px-4 py-3 text-sm"
           >
-            <option value="all">Tất cả nhóm bệnh</option>
-            {Object.entries(categoryOptions).map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
+            <option value="all">Tat ca nhom benh</option>
+            {diseaseCategoryOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>
 
-          {user?.role === "admin" && (
+          {isAdmin && (
             <button
               onClick={openAddModal}
-              className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700"
+              className="rounded-lg bg-blue-600 px-4 py-3 text-sm text-white hover:bg-blue-700"
             >
-              Thêm bệnh
+              Them benh
             </button>
           )}
         </div>
       </div>
 
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button
+          onClick={() => setSelectedLetter("")}
+          className={`rounded-lg border px-3 py-2 text-sm ${
+            selectedLetter === "" ? "bg-blue-600 text-white" : "bg-gray-100"
+          }`}
+        >
+          All
+        </button>
+
+        {alphabet.map((letter) => (
+          <button
+            key={letter}
+            onClick={() => setSelectedLetter(letter)}
+            className={`rounded-lg border px-3 py-2 text-sm ${
+              selectedLetter === letter
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100"
+            }`}
+          >
+            {letter}
+          </button>
+        ))}
+      </div>
+
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {filteredDiseases.map((disease) => (
-          <div key={disease._id} className="rounded-xl bg-white p-5 shadow-sm">
-            <h3 className="text-xl font-semibold text-gray-900">{disease.name}</h3>
-            <p className="mt-1 text-sm text-blue-600">
-              {categoryOptions[disease.category]}
-            </p>
-            <p className="mt-3 text-sm leading-6 text-gray-600">
-              {disease.symptoms.join(", ")}
-            </p>
-
-            {user?.role === "admin" && (
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  onClick={() => handleEdit(disease)}
-                  className="rounded bg-yellow-400 px-3 py-1.5 text-xs font-medium text-white"
-                >
-                  Sửa
-                </button>
-                <button
-                  onClick={() => handleDelete(disease._id)}
-                  className="rounded bg-red-500 px-3 py-1.5 text-xs font-medium text-white"
-                >
-                  Xóa
-                </button>
-              </div>
+          <div
+            key={disease._id}
+            className="overflow-hidden rounded-xl bg-white shadow-sm"
+          >
+            {disease.image && (
+              <img
+                src={disease.image}
+                alt={disease.name}
+                className="h-44 w-full object-cover"
+              />
             )}
+
+            <div className="p-5">
+              <h3 className="text-xl font-semibold text-gray-900">
+                {disease.name}
+              </h3>
+
+              <p className="mt-1 text-sm text-blue-600">
+                {getCategoryLabel(diseaseCategoryOptions, disease.category)}
+              </p>
+
+              <div className="mt-3">
+                <SeverityBadge severity={disease.severity} />
+              </div>
+
+              {disease.description && (
+                <p className="mt-3 line-clamp-2 text-sm text-gray-600">
+                  {disease.description}
+                </p>
+              )}
+
+              <p className="mt-3 line-clamp-2 text-sm text-gray-600">
+                {Array.isArray(disease.symptoms)
+                  ? disease.symptoms.join(", ")
+                  : ""}
+              </p>
+
+              {disease.image && (
+                <a
+                  href={disease.image}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 inline-flex text-xs text-blue-600 underline"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  Xem link anh
+                </a>
+              )}
+
+              {isAdmin && (
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    onClick={() => handleEdit(disease)}
+                    className="rounded bg-yellow-500 px-3 py-1.5 text-xs text-white hover:bg-yellow-600"
+                  >
+                    Sua
+                  </button>
+                  <button
+                    onClick={() => handleDelete(disease._id)}
+                    className="rounded bg-red-500 px-3 py-1.5 text-xs text-white hover:bg-red-600"
+                  >
+                    Xoa
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>
 
-      {showModal && (
+      {showModal && isAdmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-lg">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-6 shadow-lg">
             <h3 className="text-2xl font-semibold text-gray-900">
               {editingId ? "Cap nhat benh" : "Them benh"}
             </h3>
 
-            <form onSubmit={handleSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
+            <form
+              onSubmit={handleSubmit}
+              className="mt-6 grid gap-4 md:grid-cols-2"
+            >
               <input
+                name="name"
                 placeholder="Ten benh"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none md:col-span-2"
+                onChange={handleChange}
+                required
+                className="rounded-lg border border-gray-300 px-4 py-3 text-sm md:col-span-2"
               />
-              <input
-                type="text"
-                placeholder="Link hinh anh"
-                value={formData.image}
-                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                className="rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none md:col-span-2"
-              />
+
               <select
+                name="category"
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none"
+                onChange={handleChange}
+                className="rounded-lg border border-gray-300 px-4 py-3 text-sm"
               >
-                {Object.entries(categoryOptions).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
+                {diseaseCategoryOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>
+
               <select
+                name="severity"
                 value={formData.severity}
-                onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
-                className="rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none"
+                onChange={handleChange}
+                className="rounded-lg border border-gray-300 px-4 py-3 text-sm"
               >
-                <option value="low">Nhẹ</option>
-                <option value="medium">Trung bình</option>
-                <option value="high">Nguy hiểm</option>
+                {severityOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
+
               <input
-                placeholder="Triệu chứng"
-                value={formData.symptoms}
-                onChange={(e) => setFormData({ ...formData, symptoms: e.target.value })}
-                className="rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none md:col-span-2"
+                name="image"
+                placeholder="Link hinh anh"
+                value={formData.image}
+                onChange={handleChange}
+                className="rounded-lg border border-gray-300 px-4 py-3 text-sm md:col-span-2"
               />
-              <input
-                placeholder="Nguyên nhân"
-                value={formData.causes}
-                onChange={(e) => setFormData({ ...formData, causes: e.target.value })}
-                className="rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none"
-              />
-              <input
-                placeholder="Điều trị"
-                value={formData.treatment}
-                onChange={(e) => setFormData({ ...formData, treatment: e.target.value })}
-                className="rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none"
-              />
+
+              {formData.image && (
+                <div className="rounded-lg border border-dashed border-gray-300 p-4 md:col-span-2">
+                  <p className="mb-3 text-sm font-medium text-gray-700">
+                    Xem truoc anh
+                  </p>
+                  <img
+                    src={formData.image}
+                    alt={formData.name || "Disease preview"}
+                    className="h-48 w-full rounded-lg object-cover"
+                  />
+                  <a
+                    href={formData.image}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex text-sm text-blue-600 underline"
+                  >
+                    Mo link anh
+                  </a>
+                </div>
+              )}
+
               <textarea
-                placeholder="Mô tả"
+                name="description"
+                placeholder="Mo ta"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none md:col-span-2"
+                onChange={handleChange}
+                className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm md:col-span-2"
+              />
+
+              <textarea
+                name="symptoms"
+                placeholder="Trieu chung, cach nhau boi dau phay"
+                value={formData.symptoms}
+                onChange={handleChange}
+                className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm md:col-span-2"
+              />
+
+              <textarea
+                name="causes"
+                placeholder="Nguyen nhan"
+                value={formData.causes}
+                onChange={handleChange}
+                className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm"
+              />
+
+              <textarea
+                name="treatment"
+                placeholder="Dieu tri"
+                value={formData.treatment}
+                onChange={handleChange}
+                className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm"
+              />
+
+              <textarea
+                name="prevention"
+                placeholder="Phong ngua"
+                value={formData.prevention}
+                onChange={handleChange}
+                className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm md:col-span-2"
               />
 
               <div className="flex justify-end gap-3 md:col-span-2">
@@ -250,10 +421,10 @@ export default function AdminDiseases() {
                   onClick={() => setShowModal(false)}
                   className="rounded border border-gray-300 px-4 py-2 text-sm text-gray-600"
                 >
-                  Hủy
+                  Huy
                 </button>
                 <button className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white">
-                  {editingId ? "Cập nhật" : "Thêm"}
+                  {editingId ? "Cap nhat" : "Them"}
                 </button>
               </div>
             </form>

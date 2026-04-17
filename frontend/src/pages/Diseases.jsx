@@ -1,22 +1,11 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import {
+  diseaseCategoryOptions,
+  getSeverityLabel,
+} from "../constants/medicalData";
+import SeverityBadge from "./SeverityBadge";
 import api from "../services/api";
-
-const diseaseGroups = [
-  { value: "tim_mach", label: "Tim mạch" },
-  { value: "ho_hap", label: "Hô hấp" },
-  { value: "noi_tiet_chuyen_hoa", label: "Nội tiết - chuyển hóa" },
-  { value: "tieu_hoa", label: "Tiêu hóa" },
-  { value: "co_xuong_khop", label: "Cơ xương khớp" },
-  { value: "truyen_nhiem", label: "Truyền nhiễm" },
-  { value: "ung_thu", label: "Ung thư" },
-  { value: "tam_than", label: "Tâm thần - hành vi" },
-  { value: "than_kinh", label: "Thần kinh" },
-  { value: "da_lieu", label: "Da liệu" },
-  { value: "sinh_duc_tiet_nieu", label: "Sinh dục - tiết niệu" },
-  { value: "benh_nghe_nghiep", label: "Bệnh nghề nghiệp" },
-  { value: "khac", label: "Khác" },
-];
 
 export default function Diseases() {
   const [diseases, setDiseases] = useState([]);
@@ -35,7 +24,7 @@ export default function Diseases() {
     const id = searchParams.get("id");
 
     if (id && diseases.length > 0) {
-      const found = diseases.find((d) => d._id === id);
+      const found = diseases.find((disease) => disease._id === id);
       if (found) setSelectedDisease(found);
     }
   }, [searchParams, diseases]);
@@ -45,7 +34,9 @@ export default function Diseases() {
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
 
-    const matchesGroup = selectedGroup ? disease.category === selectedGroup : true;
+    const matchesGroup = selectedGroup
+      ? disease.category === selectedGroup
+      : true;
 
     return matchesSearch && matchesGroup;
   });
@@ -54,7 +45,7 @@ export default function Diseases() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedDiseases = filteredDiseases.slice(
     startIndex,
-    startIndex + itemsPerPage
+    startIndex + itemsPerPage,
   );
 
   return (
@@ -71,23 +62,23 @@ export default function Diseases() {
           type="text"
           placeholder="Tìm theo tên bệnh..."
           value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
+          onChange={(event) => {
+            setSearchTerm(event.target.value);
             setCurrentPage(1);
           }}
-          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none"
+          className="rounded-lg border border-gray-300 px-4 py-3 text-sm"
         />
 
         <select
           value={selectedGroup}
-          onChange={(e) => {
-            setSelectedGroup(e.target.value);
+          onChange={(event) => {
+            setSelectedGroup(event.target.value);
             setCurrentPage(1);
           }}
-          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none"
+          className="rounded-lg border border-gray-300 px-4 py-3 text-sm"
         >
           <option value="">Tất cả nhóm bệnh</option>
-          {diseaseGroups.map((group) => (
+          {diseaseCategoryOptions.map((group) => (
             <option key={group.value} value={group.value}>
               {group.label}
             </option>
@@ -112,22 +103,18 @@ export default function Diseases() {
               )}
 
               <div className="p-5">
-                <h3 className="text-xl font-semibold text-gray-900">{disease.name}</h3>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  {disease.name}
+                </h3>
+
                 <div className="mt-3">
-                  <span
-                    className={`rounded px-2 py-1 text-xs font-semibold ${
-                      disease.severity === "low"
-                        ? "bg-green-100 text-green-700"
-                        : disease.severity === "medium"
-                        ? "bg-yellow-100 text-yellow-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {disease.severity}
-                  </span>
+                  <SeverityBadge severity={disease.severity} />
                 </div>
+
                 <p className="mt-3 line-clamp-2 text-sm text-gray-600">
-                  {disease.symptoms.join(", ")}
+                  {Array.isArray(disease.symptoms)
+                    ? disease.symptoms.join(", ")
+                    : ""}
                 </p>
               </div>
             </div>
@@ -146,7 +133,7 @@ export default function Diseases() {
             disabled={currentPage === 1}
             className="rounded border px-4 py-2 text-sm disabled:opacity-50"
           >
-            Truoc
+            Trước
           </button>
 
           {Array.from({ length: totalPages }, (_, index) => (
@@ -162,7 +149,9 @@ export default function Diseases() {
           ))}
 
           <button
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
             disabled={currentPage === totalPages}
             className="rounded border px-4 py-2 text-sm disabled:opacity-50"
           >
@@ -194,29 +183,48 @@ export default function Diseases() {
             )}
 
             <p className="mb-2">
-              <strong>Muc do:</strong> {selectedDisease.severity}
+              <strong>Mức độ:</strong>{" "}
+              <span
+                className={
+                  selectedDisease.severity === "low"
+                    ? "text-green-600"
+                    : selectedDisease.severity === "medium"
+                    ? "text-yellow-600"
+                    : "text-red-600"
+                }
+              >
+                {getSeverityLabel(selectedDisease.severity)}
+              </span>
             </p>
+
             {selectedDisease.description && (
               <p className="mb-3">
-                <strong>Mo ta:</strong> {selectedDisease.description}
+                <strong>Mô tả:</strong> {selectedDisease.description}
               </p>
             )}
+
             <p className="mb-3">
-              <strong>Trieu chung:</strong> {selectedDisease.symptoms.join(", ")}
+              <strong>Triệu chứng:</strong>{" "}
+              {Array.isArray(selectedDisease.symptoms)
+                ? selectedDisease.symptoms.join(", ")
+                : ""}
             </p>
+
             {selectedDisease.causes && (
               <p className="mb-3">
-                <strong>Nguyen nhan:</strong> {selectedDisease.causes}
+                <strong>Nguyên nhân:</strong> {selectedDisease.causes}
               </p>
             )}
+
             {selectedDisease.treatment && (
               <p className="mb-3">
-                <strong>Dieu tri:</strong> {selectedDisease.treatment}
+                <strong>Điều trị:</strong> {selectedDisease.treatment}
               </p>
             )}
+
             {selectedDisease.prevention && (
               <p className="mb-3">
-                <strong>Phong ngua:</strong> {selectedDisease.prevention}
+                <strong>Phòng ngừa:</strong> {selectedDisease.prevention}
               </p>
             )}
           </div>

@@ -1,5 +1,5 @@
-// src/routes/disease.route.js
 import express from "express";
+import authMiddleware, { verifyAdmin } from "../middleware/auth.middleware.js";
 import {
   createDisease,
   getAllDiseases,
@@ -10,19 +10,10 @@ import {
 
 const router = express.Router();
 
-// Tạo bệnh mới
-router.post("/", createDisease);
-
-// Lấy danh sách tất cả bệnh
+router.post("/", authMiddleware, verifyAdmin, createDisease);
 router.get("/", getAllDiseases);
-
-// Lấy chi tiết bệnh theo ID
 router.get("/:id", getDiseaseById);
-
-// Cập nhật bệnh theo ID
-router.put("/:id", updateDisease);
-
-// Xóa bệnh theo ID
-router.delete("/:id", deleteDisease);
+router.put("/:id", authMiddleware, verifyAdmin, updateDisease);
+router.delete("/:id", authMiddleware, verifyAdmin, deleteDisease);
 
 export default router;

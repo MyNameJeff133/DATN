@@ -11,10 +11,13 @@ import {
   verifyEmail,
   getAllUsers,
   deleteUser,
-  approveUser
+  // approveUser,
+  deleteOwnAccount,
+  updateUserRole,
+  updateUserBanStatus
 } from "../controllers/auth.controller.js";
 
-const router = express.Router(); 
+const router = express.Router();
 
 router.post("/register", register);
 router.post("/login", login);
@@ -24,17 +27,14 @@ router.get("/verify/:token", verifyEmail);
 router.get("/me", authMiddleware, getMe);
 router.get("/profile", authMiddleware, getProfile);
 
-
-// Admin
 router.get("/users", authMiddleware, getAllUsers);
 router.delete("/users/:id", authMiddleware, deleteUser);
+router.patch("/users/:id/role", authMiddleware, updateUserRole);
+router.patch("/users/:id/ban", authMiddleware, updateUserBanStatus);
+// router.put("/users/:id/approve", authMiddleware, approveUser);
 
-router.put(
-  "/users/:id/approve",
-  authMiddleware,
-  approveUser
-);
 router.put("/change-password", authMiddleware, changePassword);
-
 router.put("/profile", authMiddleware, updateProfile);
+router.delete("/profile", authMiddleware, deleteOwnAccount);
+
 export default router;

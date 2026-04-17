@@ -79,6 +79,9 @@ export default function Header() {
           <Link to="/chatbot" className="hover:text-blue-600">
             Chatbot
           </Link>
+          <Link to="/terms" className="hover:text-blue-600">
+            Điều khoản
+          </Link>
         </nav>
 
         <div ref={searchRef} className="relative ml-auto hidden w-full max-w-md lg:block">

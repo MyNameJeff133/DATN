@@ -1,8 +1,18 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import User from "../models/User.js";
+import { deleteUserAndRelatedData } from "../utils/accountCleanup.js";
 import { sendVerificationEmail } from "../utils/sendEmail.js";
 import { generateToken } from "../utils/jwt.js";
+
+const formatUserResponse = (user) => ({
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  isBanned: user.isBanned,
+  violationCount: user.violationCount || 0,
+});
 
 export const register = async (req, res) => {
   try {
@@ -91,6 +101,12 @@ export const login = async (req, res) => {
       });
     }
 
+    if (user.isBanned) {
+      return res.status(403).json({
+        message: user.banReason || "Tài khoản đã bị khóa",
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Sai mật khẩu" });
@@ -98,15 +114,11 @@ export const login = async (req, res) => {
 
     res.json({
       token: generateToken(user),
-      user: {
-        id: user._id,
-        name: user.name,
-        role: user.role,
-      },
+      user: formatUserResponse(user),
     });
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).json({ message: "Loi server" });
+    res.status(500).json({ message: "Lỗi server" });
   }
 };
 
@@ -116,7 +128,7 @@ export const getMe = async (req, res) => {
     res.json(user);
   } catch (error) {
     console.error("GetMe error:", error);
-    res.status(500).json({ message: "Loi server" });
+    res.status(500).json({ message: "Lỗi server" });
   }
 };
 
@@ -176,74 +188,142 @@ export const adminLogin = async (req, res) => {
 
     const admin = await User.findOne({ email });
 
-    if (!admin || admin.role !== "admin") {
-      return res.status(401).json({ message: "Khong co quyen truy cap" });
+    if (!admin || !["admin", "moderator"].includes(admin.role)) {
+      return res.status(401).json({ message: "Không có quyền truy cập" });
+    }
+
+    if (admin.isBanned) {
+      return res.status(403).json({
+        message: admin.banReason || "Tài khoản đã bị khóa",
+      });
     }
 
     const isMatch = await bcrypt.compare(password, admin.password);
     if (!isMatch) {
-      return res.status(401).json({ message: "Sai mat khau" });
+      return res.status(401).json({ message: "Sai mật khẩu" });
     }
 
     res.json({
       token: generateToken(admin),
-      user: {
-        id: admin._id,
-        name: admin.name,
-        role: admin.role,
-      },
+      user: formatUserResponse(admin),
     });
   } catch (error) {
     console.error("Admin login error:", error);
-    res.status(500).json({ message: "Loi server" });
+    res.status(500).json({ message: "Lỗi server" });
   }
 };
 
 export const getAllUsers = async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Khong co quyen" });
+    if (!["admin", "moderator"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Không có quyền" });
     }
 
     const users = await User.find().select("-password");
     res.json(users);
   } catch (error) {
     console.error("Get users error:", error);
-    res.status(500).json({ message: "Loi server" });
+    res.status(500).json({ message: "Lỗi server" });
   }
 };
 
 export const deleteUser = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Khong co quyen" });
-    }
-
-    await User.findByIdAndDelete(req.params.id);
-    res.json({ message: "Da xoa user" });
-  } catch (error) {
-    console.error("Delete user error:", error);
-    res.status(500).json({ message: "Loi server" });
-  }
-};
-
-export const approveUser = async (req, res) => {
-  try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Khong co quyen" });
+      return res.status(403).json({ message: "Không có quyền" });
     }
 
     const user = await User.findById(req.params.id);
 
     if (!user) {
-      return res.status(404).json({ message: "Khong tim thay user" });
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
 
-    user.isApproved = true;
+    if (String(user._id) === String(req.user.id)) {
+      return res.status(400).json({ message: "Không thể xóa chính mình ở mục này" });
+    }
+
+    await deleteUserAndRelatedData(user._id);
+    res.json({ message: "Đã xóa người dùng" });
+  } catch (error) {
+    console.error("Delete user error:", error);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+export const deleteOwnAccount = async (req, res) => {
+  try {
+    await deleteUserAndRelatedData(req.user.id);
+    res.json({ message: "Đã xóa tài khoản" });
+  } catch (error) {
+    console.error("Delete own account error:", error);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+export const updateUserRole = async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Không có quyền" });
+    }
+
+    const { role } = req.body;
+
+    if (!["user", "moderator"].includes(role)) {
+      return res.status(400).json({ message: "Vai trò không hợp lệ" });
+    }
+
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    if (user.role === "admin") {
+      return res.status(400).json({ message: "Không thể thay đổi vai trò của admin" });
+    }
+
+    user.role = role;
     await user.save();
 
-    res.json({ message: "Da duyet tai khoan" });
+    res.json({
+      message: role === "moderator" ? "Đã bỏ nhiệm kiểm duyệt viên" : "Đã thu hồi quyền kiểm duyệt viên",
+      user,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Loi server" });
+    console.error("Update user role error:", error);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+export const updateUserBanStatus = async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Không có quyền" });
+    }
+
+    const { isBanned, reason } = req.body;
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    if (user.role === "admin") {
+      return res.status(400).json({ message: "Không thể khóa tài khoản admin" });
+    }
+
+    user.isBanned = Boolean(isBanned);
+    user.banReason = user.isBanned ? reason?.trim?.() || "Tài khoản vi phạm quy định" : "";
+    user.bannedAt = user.isBanned ? new Date() : null;
+    await user.save();
+
+    res.json({
+      message: user.isBanned ? "Đã khóa tài khoản" : "Đã mở khóa tài khoản",
+      user,
+    });
+  } catch (error) {
+    console.error("Update ban status error:", error);
+    res.status(500).json({ message: "Lỗi server" });
   }
 };

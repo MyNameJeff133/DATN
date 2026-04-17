@@ -18,8 +18,8 @@ export default function AdminForumReports() {
       console.error("Loi tai bao cao bai viet:", fetchError);
       setError(
         fetchError.response?.status === 403
-          ? "Tài khoản hiện tại không có quyền admin. Vui lòng đăng nhập lại bằng tài khoản admin."
-          : fetchError.response?.data?.message || "Không thể tải danh sách báo cáo"
+          ? "Tai khoan hien tai khong co quyen vao khu xu ly bai viet."
+          : fetchError.response?.data?.message || "Khong the tai danh sach bao cao"
       );
     } finally {
       setLoading(false);
@@ -35,6 +35,10 @@ export default function AdminForumReports() {
       setActionLoadingId(`${postId}-${action}`);
       const res = await api.patch(`/forum/admin/${postId}/moderate`, { action });
 
+      if (res.data.affectedUser?.isBanned) {
+        alert("Tai khoan tac gia da bi khoa vi vi pham qua 3 lan.");
+      }
+
       setPosts((prev) => {
         if (action === "hide") {
           return prev.map((post) =>
@@ -45,9 +49,9 @@ export default function AdminForumReports() {
         return prev.filter((post) => post._id !== postId);
       });
     } catch (moderateError) {
-      console.error("Lỗi xử lý báo cáo:", moderateError);
+      console.error("Loi xu ly bao cao:", moderateError);
       setError(
-        moderateError.response?.data?.message || "Không thể cập nhật trạng thái bài viết"
+        moderateError.response?.data?.message || "Khong the cap nhat trang thai bai viet"
       );
     } finally {
       setActionLoadingId("");
@@ -57,11 +61,9 @@ export default function AdminForumReports() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Xử lý bài viết</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Xu ly bai viet vi pham</h1>
         <p className="mt-2 text-gray-600">
-          {loading
-            ? "Đang tải dữ liệu..."
-            : `${posts.length} bài viết đang chờ admin xử lý`}
+          {loading ? "Dang tai du lieu..." : `${posts.length} bai viet dang cho xu ly`}
         </p>
       </div>
 
@@ -73,11 +75,11 @@ export default function AdminForumReports() {
 
       {loading ? (
         <div className="rounded-xl bg-white px-6 py-10 text-center text-gray-500 shadow-sm">
-          Đang tải danh sách báo cáo...
+          Dang tai danh sach bao cao...
         </div>
       ) : posts.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center text-gray-500">
-          Không có báo cáo nào cần xử lý.
+          Khong co bao cao nao can xu ly.
         </div>
       ) : (
         <div className="space-y-5">
@@ -97,10 +99,7 @@ export default function AdminForumReports() {
                     {post.content}
                   </p>
                   <p className="mt-4 text-sm text-gray-500">
-                    Đăng bởi{" "}
-                    <span className="font-medium text-gray-700">
-                      {post.author?.name}
-                    </span>
+                    Dang boi <span className="font-medium text-gray-700">{post.author?.name}</span>
                   </p>
 
                   <div className="mt-5 space-y-3">
@@ -110,11 +109,9 @@ export default function AdminForumReports() {
                         className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3"
                       >
                         <p className="text-sm font-medium text-gray-900">
-                          {report.user?.name || "Người dùng"} báo cáo
+                          {report.user?.name || "Nguoi dung"} bao cao
                         </p>
-                        <p className="mt-1 text-sm leading-6 text-gray-600">
-                          {report.reason}
-                        </p>
+                        <p className="mt-1 text-sm leading-6 text-gray-600">{report.reason}</p>
                       </div>
                     ))}
                   </div>
@@ -127,9 +124,7 @@ export default function AdminForumReports() {
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
                   >
                     <EyeOff size={16} />
-                    {actionLoadingId === `${post._id}-hide`
-                      ? "Đang xử lý..."
-                      : "Ẩn bài viết"}
+                    {actionLoadingId === `${post._id}-hide` ? "Dang xu ly..." : "An bai viet"}
                   </button>
 
                   <button
@@ -138,9 +133,7 @@ export default function AdminForumReports() {
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
                   >
                     <ShieldCheck size={16} />
-                    {actionLoadingId === `${post._id}-dismiss`
-                      ? "Đang xử lý..."
-                      : "Bỏ qua báo cáo"}
+                    {actionLoadingId === `${post._id}-dismiss` ? "Dang xu ly..." : "Bo qua bao cao"}
                   </button>
 
                   {post.status === "hidden" && (
@@ -150,9 +143,7 @@ export default function AdminForumReports() {
                       className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
                     >
                       <RotateCcw size={16} />
-                      {actionLoadingId === `${post._id}-restore`
-                        ? "Đang xử lý..."
-                        : "Khôi phục bài viết"}
+                      {actionLoadingId === `${post._id}-restore` ? "Dang xu ly..." : "Khoi phuc bai viet"}
                     </button>
                   )}
                 </div>

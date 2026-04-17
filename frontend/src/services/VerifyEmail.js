@@ -3,47 +3,101 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 export default function VerifyEmail() {
-
   const { token } = useParams();
   const navigate = useNavigate();
 
   const [status, setStatus] = useState("loading");
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
+    if (!token) {
+      setStatus("error");
+      setMessage("Token không tồn tại.");
+      return;
+    }
 
-    api.get(`/auth/verify/${token}`)
-      .then(() => setStatus("success"))
-      .catch(() => setStatus("error"));
+    const verifyEmail = async () => {
+      try {
+        const res = await api.get(`/auth/verify/${token}`);
+        setStatus("success");
+        setMessage(res.data?.message || "Xác thực email thành công 🎉");
 
-  }, [token]);
+        // auto chuyển về login sau 3s
+        setTimeout(() => {
+          navigate("/login");
+        }, 3000);
+      } catch (error) {
+        setStatus("error");
+        setMessage(
+          error.response?.data?.message ||
+            "Token không hợp lệ hoặc đã hết hạn."
+        );
+      }
+    };
 
-  if (status === "loading") {
-    return <h2>Đang xác thực email...</h2>;
-  }
-
-  if (status === "error") {
-    return <h2>Token không hợp lệ</h2>;
-  }
+    verifyEmail();
+  }, [token, navigate]);
 
   return (
-    <div style={{textAlign:"center", marginTop:"100px"}}>
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
+      <div className="w-full max-w-md rounded-xl bg-white p-6 text-center shadow">
+        
+        {status === "loading" && (
+          <>
+            <div className="mb-4 animate-spin text-3xl">⏳</div>
+            <h2 className="text-lg font-semibold text-gray-700">
+              Đang xác thực email...
+            </h2>
+          </>
+        )}
 
-      <h2>🎉 Xác thực email thành công</h2>
+        {status === "success" && (
+          <>
+            <div className="mb-4 text-4xl">🎉</div>
+            <h2 className="text-xl font-bold text-green-600">
+              Xác thực thành công
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">{message}</p>
 
-      <button
-        onClick={() => navigate("/login")}
-        style={{
-          marginTop:"20px",
-          padding:"10px 20px",
-          background:"green",
-          color:"white",
-          border:"none",
-          borderRadius:"5px"
-        }}
-      >
-        Đăng nhập
-      </button>
+            <button
+              onClick={() => navigate("/login")}
+              className="mt-5 rounded-lg bg-green-600 px-5 py-2 text-white hover:bg-green-700"
+            >
+              Đăng nhập ngay
+            </button>
 
+            <p className="mt-3 text-xs text-gray-400">
+              Tự động chuyển sau 3 giây...
+            </p>
+          </>
+        )}
+
+        {status === "error" && (
+          <>
+            <div className="mb-4 text-4xl">❌</div>
+            <h2 className="text-xl font-bold text-red-600">
+              Xác thực thất bại
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">{message}</p>
+
+            <div className="mt-5 flex flex-col gap-2">
+              <button
+                onClick={() => navigate("/register")}
+                className="rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
+              >
+                Đăng ký lại
+              </button>
+
+              <button
+                onClick={() => navigate("/login")}
+                className="rounded-lg border px-5 py-2 text-gray-700"
+              >
+                Về trang đăng nhập
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

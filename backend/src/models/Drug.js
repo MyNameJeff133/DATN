@@ -4,6 +4,7 @@ const drugSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, unique: true },
 
+    image: { type: String },
     category: {
       type: String,
       enum: [
