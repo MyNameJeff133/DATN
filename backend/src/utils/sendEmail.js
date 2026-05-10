@@ -8,10 +8,11 @@ export const sendVerificationEmail = async (email, token) => {
       pass: process.env.EMAIL_PASS ? "SET" : "NOT SET",
     });
 
+    // Use port 465 with SSL instead of 587 (Render blocks 587)
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
-      port: 587,
-      secure: false, // true for 465, false for other ports
+      port: 465,
+      secure: true, // SSL
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -19,7 +20,7 @@ export const sendVerificationEmail = async (email, token) => {
     });
 
     // Verify connection
-    console.log("🔗 Verifying SMTP connection...");
+    console.log("🔗 Verifying SMTP connection on port 465...");
     await transporter.verify();
     console.log("✅ SMTP connection verified");
 
