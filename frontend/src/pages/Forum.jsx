@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  // CircleUserRound,
   Clock,
   Eye,
   MessageCircle,
@@ -12,6 +11,7 @@ import {
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import api from "../services/api";
+import { getStoredToken } from "../services/authStorage";
 
 dayjs.extend(relativeTime);
 
@@ -26,17 +26,7 @@ export default function Forum() {
     content: "",
   });
   const navigate = useNavigate();
-  const token = localStorage.getItem("token");
-  const storedUser = localStorage.getItem("user");
-  // let currentUser = null;
-
-  if (storedUser) {
-    try {
-      // currentUser = JSON.parse(storedUser);
-    } catch {
-      // currentUser = null;
-    }
-  }
+  const token = getStoredToken();
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -93,58 +83,52 @@ export default function Forum() {
         return;
       }
 
-      setFormError(
-        error.response?.data?.message || "Không thể đăng bài viết lúc này"
-      );
+      setFormError(error.response?.data?.message || "Không thể đăng bài viết lúc này");
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <section className="bg-gray-50 py-12">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="rounded-3xl bg-white p-8 shadow-sm">
+    <section className="py-8">
+      <div className="up-page py-0">
+        <div className="up-section p-7 md:p-8">
           <div className="max-w-3xl">
-            <span className="inline-flex rounded-full bg-blue-50 px-4 py-1.5 text-sm font-medium text-blue-700">
-              Diễn đàn cộng đồng
-            </span>
-            <h1 className="mt-4 text-3xl font-bold text-gray-900">
+            <span className="up-kicker">Diễn đàn cộng đồng</span>
+            <h1 className="up-title mt-4">
               Cùng trao đổi kiến thức sức khỏe và kinh nghiệm thực tế
             </h1>
-            <p className="mt-3 text-base leading-8 text-gray-600">
-              Theo dấu các bài viết mới, đọc chia sẻ hữu ích và tham gia thảo luận cùng cộng đồng Ur Pharmacy. 
-              Đây là nơi bạn có thể đặt câu hỏi, chia sẻ kinh nghiệm và nhận được sự hỗ trợ từ những người có cùng mối quan tâm về sức khỏe.
+            <p className="up-muted mt-3">
+              Theo dõi các bài viết mới, đọc chia sẻ hữu ích và tham gia thảo luận cùng cộng đồng Ur Pharmacy.
             </p>
           </div>
         </div>
 
-        <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm">
+        <div className="up-section mt-8 p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-1.5 text-sm font-medium text-blue-700">
+              <div className="up-kicker">
                 <PenSquare size={16} />
                 Đăng bài mới
               </div>
-              <h2 className="mt-4 text-2xl font-semibold text-gray-900">
+              <h2 className="mt-4 text-2xl font-bold text-slate-950">
                 Chia sẻ câu hỏi hoặc kinh nghiệm của bạn
               </h2>
-              <p className="mt-2 text-sm leading-7 text-gray-600">
-                Sau khi đăng nhập, bạn có thể tạo bài viết mới để nhận được tư vấn
-                và trao đổi với cộng đồng.
+              <p className="mt-2 text-sm leading-7 text-slate-600">
+                Sau khi đăng nhập, bạn có thể tạo bài viết mới để nhận tư vấn và trao đổi với cộng đồng.
               </p>
             </div>
           </div>
 
           {!token ? (
-            <div className="mt-6 rounded-2xl border border-dashed border-blue-200 bg-blue-50/60 px-5 py-6">
-              <p className="text-sm leading-7 text-blue-900">
+            <div className="mt-6 rounded-3xl border border-dashed border-cyan-200 bg-cyan-50/70 px-5 py-6">
+              <p className="text-sm leading-7 text-cyan-900">
                 Bạn cần đăng nhập để đăng bài trên forum.
               </p>
               <button
                 type="button"
                 onClick={() => navigate("/login")}
-                className="mt-4 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
+                className="up-btn-primary mt-4"
               >
                 Đăng nhập để đăng bài
               </button>
@@ -157,7 +141,7 @@ export default function Forum() {
                 value={formData.title}
                 onChange={handleChange}
                 placeholder="Nhập tiêu đề bài viết"
-                className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                className="up-field"
               />
 
               <textarea
@@ -165,7 +149,7 @@ export default function Forum() {
                 value={formData.content}
                 onChange={handleChange}
                 placeholder="Mô tả vấn đề, kinh nghiệm hoặc câu hỏi của bạn..."
-                className="min-h-36 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                className="up-field min-h-36"
               />
 
               {formError && (
@@ -181,11 +165,7 @@ export default function Forum() {
               )}
 
               <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
-                >
+                <button type="submit" disabled={submitting} className="up-btn-primary">
                   {submitting ? "Đang đăng bài..." : "Đăng bài"}
                 </button>
               </div>
@@ -195,11 +175,11 @@ export default function Forum() {
 
         <div className="mt-8">
           {loading ? (
-            <div className="rounded-2xl bg-white px-6 py-10 text-center text-gray-500 shadow-sm">
+            <div className="up-panel px-6 py-10 text-center text-slate-500">
               Đang tải các bài viết trên diễn đàn...
             </div>
           ) : posts.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center text-gray-500">
+            <div className="up-panel border-dashed px-6 py-12 text-center text-slate-500">
               Chưa có bài viết nào trong diễn đàn.
             </div>
           ) : (
@@ -207,53 +187,44 @@ export default function Forum() {
               {posts.map((post) => (
                 <article
                   key={post._id}
-                  className="cursor-pointer rounded-3xl bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                  className="up-card cursor-pointer p-6"
                   onClick={() => navigate(`/forum/${post._id}`)}
                 >
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="max-w-3xl">
-                      <h2 className="text-2xl font-semibold leading-tight text-gray-900">
+                      <h2 className="text-2xl font-bold leading-tight text-slate-950">
                         {post.title}
                       </h2>
-                      <p className="mt-3 line-clamp-2 text-sm leading-7 text-gray-600">
+                      <p className="mt-3 line-clamp-2 text-sm leading-7 text-slate-600">
                         {post.content}
                       </p>
-                      <p className="mt-4 text-sm text-gray-500">
+                      <p className="mt-4 text-sm text-slate-500">
                         Đăng bởi{" "}
-                        <span className="font-medium text-gray-700">
+                        <span className="font-semibold text-slate-700">
                           {post.author?.name}
                         </span>
                       </p>
                     </div>
 
                     <div className="shrink-0">
-                      <span className="inline-flex rounded-full bg-gray-100 px-4 py-2 text-sm font-medium text-blue-700">
+                      <span className="inline-flex rounded-full bg-cyan-50 px-4 py-2 text-sm font-bold text-cyan-700">
                         Xem chi tiết
                       </span>
                     </div>
                   </div>
 
                   <div className="mt-6 flex flex-wrap gap-3 text-sm">
-                    <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-4 py-2 text-gray-600">
-                      <Eye size={16} />
-                      {post.views || 0} lượt xem
-                    </span>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-blue-700">
-                      <MessageCircle size={16} />
+                    <MetaPill icon={<Eye size={16} />}>{post.views || 0} lượt xem</MetaPill>
+                    <MetaPill icon={<MessageCircle size={16} />} tone="cyan">
                       {post.commentCount || 0} bình luận
-                    </span>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-emerald-700">
-                      <ThumbsUp size={16} />
+                    </MetaPill>
+                    <MetaPill icon={<ThumbsUp size={16} />} tone="emerald">
                       {post.likes?.length || 0} lượt thích
-                    </span>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-4 py-2 text-rose-700">
-                      <ThumbsDown size={16} />
+                    </MetaPill>
+                    <MetaPill icon={<ThumbsDown size={16} />} tone="rose">
                       {post.dislikes?.length || 0} không thích
-                    </span>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-4 py-2 text-gray-600">
-                      <Clock size={16} />
-                      {dayjs(post.createdAt).fromNow()}
-                    </span>
+                    </MetaPill>
+                    <MetaPill icon={<Clock size={16} />}>{dayjs(post.createdAt).fromNow()}</MetaPill>
                   </div>
                 </article>
               ))}
@@ -262,5 +233,21 @@ export default function Forum() {
         </div>
       </div>
     </section>
+  );
+}
+
+function MetaPill({ icon, tone = "slate", children }) {
+  const toneClass = {
+    slate: "bg-slate-50 text-slate-600",
+    cyan: "bg-cyan-50 text-cyan-700",
+    emerald: "bg-emerald-50 text-emerald-700",
+    rose: "bg-rose-50 text-rose-700",
+  }[tone];
+
+  return (
+    <span className={`inline-flex items-center gap-2 rounded-full px-4 py-2 ${toneClass}`}>
+      {icon}
+      {children}
+    </span>
   );
 }

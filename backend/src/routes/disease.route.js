@@ -1,5 +1,5 @@
 import express from "express";
-import authMiddleware, { verifyAdmin } from "../middleware/auth.middleware.js";
+import authMiddleware, { requireRoles, verifyAdmin } from "../middleware/auth.middleware.js";
 import {
   createDisease,
   getAllDiseases,
@@ -13,7 +13,7 @@ const router = express.Router();
 router.post("/", authMiddleware, verifyAdmin, createDisease);
 router.get("/", getAllDiseases);
 router.get("/:id", getDiseaseById);
-router.put("/:id", authMiddleware, verifyAdmin, updateDisease);
+router.put("/:id", authMiddleware, requireRoles("admin", "moderator"), updateDisease);
 router.delete("/:id", authMiddleware, verifyAdmin, deleteDisease);
 
 export default router;

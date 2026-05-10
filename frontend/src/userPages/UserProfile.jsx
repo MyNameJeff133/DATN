@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { clearAuthStorage } from "../services/authStorage";
 
 const initialPasswordData = {
   oldPassword: "",
@@ -40,9 +41,7 @@ export default function Profile() {
         role: res.data?.role || "",
       });
     } catch (err) {
-      setProfileError(
-        err.response?.data?.message || "Không thể tải được thông tin cá nhân"
-      );
+      setProfileError(err.response?.data?.message || "Không thể tải được thông tin cá nhân");
     }
   };
 
@@ -63,9 +62,7 @@ export default function Profile() {
       setEditing(false);
       alert("Cập nhật thành công");
     } catch (err) {
-      setProfileError(
-        err.response?.data?.message || "Cập nhật thông tin thất bại"
-      );
+      setProfileError(err.response?.data?.message || "Cập nhật thông tin thất bại");
     }
   };
 
@@ -127,7 +124,7 @@ export default function Profile() {
   const handleDeleteAccount = async () => {
     if (
       !window.confirm(
-       "Bạn chắc chắn muốn xóa tài khoản? Toàn bộ bài viết, bình luận và lịch sử chat liên quan sẽ bị xóa."
+        "Bạn chắc chắn muốn xóa tài khoản? Toàn bộ bài viết, bình luận và lịch sử chat liên quan sẽ bị xóa."
       )
     ) {
       return;
@@ -136,8 +133,7 @@ export default function Profile() {
     try {
       setDeleteLoading(true);
       await api.delete("/auth/profile");
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+      clearAuthStorage();
       navigate("/", { replace: true });
     } catch (err) {
       setProfileError(err.response?.data?.message || "Không thể xóa tài khoản");
@@ -147,187 +143,166 @@ export default function Profile() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
-      <div className="rounded-xl bg-white p-6 shadow-sm">
-        <h2 className="text-2xl font-bold text-gray-900">Trang cá nhân</h2>
-
-        <div className="mt-6 flex gap-3">
-          <button
-            onClick={() => setTab("info")}
-            className={`rounded px-4 py-2 text-sm ${
-              tab === "info" ? "bg-blue-600 text-white" : "bg-gray-100"
-            }`}
-          >
-            Thông tin cá nhân
-          </button>
-
-          <button
-            onClick={() => setTab("password")}
-            className={`rounded px-4 py-2 text-sm ${
-              tab === "password" ? "bg-blue-600 text-white" : "bg-gray-100"
-            }`}
-          >
-            Đổi mật khẩu
-          </button>
+    <div className="up-page max-w-4xl">
+      <div className="up-section overflow-hidden">
+        <div className="border-b border-slate-200 bg-gradient-to-r from-cyan-50 to-white px-6 py-7">
+          <span className="up-kicker">
+            <UserRound size={15} />
+            Tài khoản
+          </span>
+          <h2 className="up-title mt-3">Trang cá nhân</h2>
+          <p className="up-muted mt-2">
+            Quản lý thông tin tài khoản, bảo mật mật khẩu và quyền riêng tư.
+          </p>
         </div>
 
-        {tab === "info" && (
-          <div className="mt-6">
-            <div className="mb-4">
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Email
-              </label>
-              <input
-                className="w-full rounded-lg border border-gray-300 bg-gray-100 p-3 text-sm"
-                value={user.email}
-                disabled
-              />
-            </div>
+        <div className="p-6">
+          <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-50 p-1">
+            <TabButton active={tab === "info"} onClick={() => setTab("info")}>
+              Thông tin cá nhân
+            </TabButton>
+            <TabButton active={tab === "password"} onClick={() => setTab("password")}>
+              Đổi mật khẩu
+            </TabButton>
+          </div>
 
-            <div className="mb-4">
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Họ tên
-              </label>
-              <input
-                className="w-full rounded-lg border border-gray-300 p-3 text-sm"
+          {tab === "info" && (
+            <div className="mt-6 space-y-5">
+              <Field label="Email" value={user.email} disabled />
+              <Field
+                label="Họ tên"
                 name="name"
                 value={user.name}
                 onChange={handleChange}
                 disabled={!editing}
               />
+
+              {profileError && (
+                <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {profileError}
+                </p>
+              )}
+
+              {!editing ? (
+                <div className="flex flex-wrap gap-3">
+                  <button onClick={() => setEditing(true)} className="up-btn-primary">
+                    Chỉnh sửa
+                  </button>
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={deleteLoading}
+                    className="up-btn-danger"
+                  >
+                    {deleteLoading ? "Đang xóa..." : "Xóa tài khoản"}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-3">
+                  <button onClick={handleSave} className="up-btn-primary">
+                    Lưu
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditing(false);
+                      setProfileError("");
+                      fetchProfile();
+                    }}
+                    className="up-btn-secondary"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              )}
             </div>
+          )}
 
-            {profileError && (
-              <p className="mb-4 text-sm text-red-600">{profileError}</p>
-            )}
-
-            {!editing ? (
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={() => setEditing(true)}
-                  className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white"
-                >
-                  Chỉnh sửa
-                </button>
-                <button
-                  onClick={handleDeleteAccount}
-                  disabled={deleteLoading}
-                  className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-                >
-                  {deleteLoading ? "Đang xóa..." : "Xóa tài khoản"}
-                </button>
-              </div>
-            ) : (
-              <div className="flex gap-3">
-                <button
-                  onClick={handleSave}
-                  className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white"
-                >
-                  Lưu
-                </button>
-                <button
-                  onClick={() => {
-                    setEditing(false);
-                    setProfileError("");
-                    fetchProfile();
-                  }}
-                  className="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700"
-                >
-                  Hủy
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {tab === "password" && (
-          <div className="mt-6">
-            <div className="relative mb-4">
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Mật khẩu cũ
-              </label>
-              <input
-                type={showPassword.old ? "text" : "password"}
+          {tab === "password" && (
+            <div className="mt-6 space-y-5">
+              <PasswordField
+                label="Mật khẩu cũ"
                 name="oldPassword"
                 value={passwordData.oldPassword}
+                show={showPassword.old}
                 onChange={handlePasswordChange}
-                className="w-full rounded-lg border border-gray-300 p-3 text-sm"
+                onToggle={() => setShowPassword((prev) => ({ ...prev, old: !prev.old }))}
+                error={errors.oldPassword}
               />
-              <span
-                onClick={() =>
-                  setShowPassword((prev) => ({ ...prev, old: !prev.old }))
-                }
-                className="absolute right-3 top-10 cursor-pointer text-gray-500"
-              >
-                {showPassword.old ? <EyeOff size={18} /> : <Eye size={18} />}
-              </span>
-              {errors.oldPassword && (
-                <p className="mt-1 text-sm text-red-600">{errors.oldPassword}</p>
-              )}
-            </div>
-
-            <div className="relative mb-4">
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Mật khẩu mới
-              </label>
-              <input
-                type={showPassword.new ? "text" : "password"}
+              <PasswordField
+                label="Mật khẩu mới"
                 name="newPassword"
                 value={passwordData.newPassword}
+                show={showPassword.new}
                 onChange={handlePasswordChange}
-                className="w-full rounded-lg border border-gray-300 p-3 text-sm"
+                onToggle={() => setShowPassword((prev) => ({ ...prev, new: !prev.new }))}
+                error={errors.newPassword}
               />
-              <span
-                onClick={() =>
-                  setShowPassword((prev) => ({ ...prev, new: !prev.new }))
-                }
-                className="absolute right-3 top-10 cursor-pointer text-gray-500"
-              >
-                {showPassword.new ? <EyeOff size={18} /> : <Eye size={18} />}
-              </span>
-              {errors.newPassword && (
-                <p className="mt-1 text-sm text-red-600">{errors.newPassword}</p>
-              )}
-            </div>
-
-            <div className="relative mb-4">
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Xác nhận mật khẩu
-              </label>
-              <input
-                type={showPassword.confirm ? "text" : "password"}
+              <PasswordField
+                label="Xác nhận mật khẩu"
                 name="confirmPassword"
                 value={passwordData.confirmPassword}
+                show={showPassword.confirm}
                 onChange={handlePasswordChange}
-                className="w-full rounded-lg border border-gray-300 p-3 text-sm"
+                onToggle={() => setShowPassword((prev) => ({ ...prev, confirm: !prev.confirm }))}
+                error={errors.confirmPassword}
               />
-              <span
-                onClick={() =>
-                  setShowPassword((prev) => ({
-                    ...prev,
-                    confirm: !prev.confirm,
-                  }))
-                }
-                className="absolute right-3 top-10 cursor-pointer text-gray-500"
-              >
-                {showPassword.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
-              </span>
-              {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+
+              {errors.api && (
+                <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {errors.api}
+                </p>
               )}
+
+              <button onClick={handleChangePassword} className="up-btn-primary">
+                <LockKeyhole size={17} />
+                Đổi mật khẩu
+              </button>
             </div>
-
-            {errors.api && <p className="mb-4 text-sm text-red-600">{errors.api}</p>}
-
-            <button
-              onClick={handleChangePassword}
-              className="rounded bg-red-500 px-4 py-2 text-sm font-medium text-white"
-            >
-              Đổi mật khẩu
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+function TabButton({ active, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-xl px-4 py-2.5 text-sm font-bold transition ${
+        active ? "bg-white text-cyan-700 shadow-sm" : "text-slate-600 hover:text-slate-950"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Field({ label, ...props }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-bold text-slate-700">{label}</span>
+      <input {...props} className="up-field disabled:bg-slate-100 disabled:text-slate-500" />
+    </label>
+  );
+}
+
+function PasswordField({ label, show, onToggle, error, ...props }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-bold text-slate-700">{label}</span>
+      <div className="relative">
+        <input {...props} type={show ? "text" : "password"} className="up-field pr-12" />
+        <button
+          type="button"
+          onClick={onToggle}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+          aria-label={show ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+        >
+          {show ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      </div>
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+    </label>
   );
 }

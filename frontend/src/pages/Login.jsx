@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { ArrowRight, LockKeyhole, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { saveAuthStorage } from "../services/authStorage";
+import AuthLayout from "../components/AuthLayout";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -18,10 +21,11 @@ export default function Login() {
         password,
       });
 
-      localStorage.setItem("token", res.data.token);
-      if (res.data.user) {
-        localStorage.setItem("user", JSON.stringify(res.data.user));
+      if (!saveAuthStorage(res.data.token, res.data.user)) {
+        setError("Không thể lưu thông tin đăng nhập");
+        return;
       }
+
       navigate("/");
     } catch (err) {
       setError("Sai email hoặc mật khẩu");
@@ -29,55 +33,64 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-180px)] items-center justify-center px-4 py-10">
-      <form
-        onSubmit={handleLogin}
-        className="w-full max-w-md rounded-xl bg-white p-8 shadow-sm"
-      >
-        <h2 className="text-2xl font-bold text-gray-900">Đăng nhập</h2>
-        <p className="mt-2 text-sm text-gray-500">
-          Đăng nhập để sử dụng đầy đủ chức năng của hệ thống.
-        </p>
+    <AuthLayout
+      title="Đăng nhập"
+      subtitle="Tiếp tục hành trình chăm sóc sức khỏe cùng chúng tôi"
+      sideTitle="Chào mừng quay trở lại"
+    >
+      <form onSubmit={handleLogin} className="space-y-7">
+        <div className="space-y-5">
+          <label className="block">
+            <span className="text-base font-bold text-slate-800">Email</span>
+            <div className="mt-3 flex min-h-16 items-center gap-4 rounded-3xl border border-slate-200 bg-slate-50 px-5 transition focus-within:border-cyan-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-cyan-100">
+              <Mail className="shrink-0 text-cyan-700" size={24} />
+              <input
+                type="email"
+                placeholder="Nhập email"
+                className="w-full bg-transparent text-lg text-slate-900 outline-none placeholder:text-slate-400"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+          </label>
 
-        <div className="mt-6 space-y-4">
-          <input
-            type="email"
-            placeholder="Email"
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-blue-500"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-
-          <input
-            type="password"
-            placeholder="Mat khau"
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-blue-500"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <label className="block">
+            <span className="text-base font-bold text-slate-800">Mật khẩu</span>
+            <div className="mt-3 flex min-h-16 items-center gap-4 rounded-3xl border border-slate-200 bg-slate-50 px-5 transition focus-within:border-cyan-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-cyan-100">
+              <LockKeyhole className="shrink-0 text-cyan-700" size={24} />
+              <input
+                type="password"
+                placeholder="Nhập mật khẩu"
+                className="w-full bg-transparent text-lg text-slate-900 outline-none placeholder:text-slate-400"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+          </label>
         </div>
 
         {error && (
-          <div className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
             {error}
           </div>
         )}
 
-        <button className="mt-6 w-full rounded-lg bg-blue-600 py-3 text-sm font-medium text-white hover:bg-blue-700">
+        <button className="flex min-h-16 w-full items-center justify-center gap-3 rounded-3xl bg-gradient-to-r from-cyan-800 to-cyan-600 px-5 text-lg font-bold text-white shadow-[0_18px_35px_-22px_rgba(14,116,144,0.9)] transition hover:from-cyan-900 hover:to-cyan-700">
           Đăng nhập
+          <ArrowRight size={24} />
         </button>
 
-        <p className="mt-4 text-center text-sm text-gray-600">
+        <p className="text-center text-base text-slate-500">
           Chưa có tài khoản?{" "}
           <button
             type="button"
-            className="font-medium text-blue-600"
+            className="font-bold text-cyan-700 transition hover:text-cyan-800"
             onClick={() => navigate("/register")}
           >
-            Đăng ký
+            Đăng ký ngay
           </button>
         </p>
       </form>
-    </div>
+    </AuthLayout>
   );
 }

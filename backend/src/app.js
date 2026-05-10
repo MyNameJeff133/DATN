@@ -7,6 +7,8 @@ import chatbotRoutes from "./routes/chatbot.route.js";
 import forumRoutes from "./routes/forum.route.js";
 import searchRoutes from "./routes/search.route.js";
 import commmentRoutes from "./routes/comment.route.js"; 
+import contentFeedbackRoutes from "./routes/contentFeedback.route.js";
+import notificationRoutes from "./routes/notification.route.js";
 
 
 const app = express();
@@ -21,5 +23,7 @@ app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/forum", forumRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/comments", commmentRoutes);
+app.use("/api/content-feedback", contentFeedbackRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 export default app;

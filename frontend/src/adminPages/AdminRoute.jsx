@@ -1,8 +1,9 @@
 import { Navigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import { getStoredToken } from "../services/authStorage";
 
 export default function AdminRoute({ children }) {
-  const token = localStorage.getItem("token");
+  const token = getStoredToken();
 
   if (!token) {
     return <Navigate to="/admin-portal-urpharmacy" />;

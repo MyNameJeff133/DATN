@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import AuthLayout from "../components/AuthLayout";
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -54,74 +55,77 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-180px)] items-center justify-center px-4 py-10">
-      <form
-        onSubmit={handleRegister}
-        className="w-full max-w-md rounded-2xl border border-slate-100 bg-white p-8 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.35)]"
-      >
-        <h2 className="text-2xl font-bold text-gray-900">Đăng ký tài khoản</h2>
-        <p className="mt-2 text-sm leading-6 text-gray-500">
-          Tạo tài khoản để tham gia vào hệ thống Ur Pharmacy.
-        </p>
-
-        <div className="mt-6 space-y-4">
-          <input
+    <AuthLayout
+      title="Đăng ký"
+      subtitle="Tạo tài khoản để sử dụng đầy đủ dịch vụ của Ur Pharmacy"
+      sideTitle="Bắt đầu cùng Ur Pharmacy"
+      sideDescription="Tạo tài khoản để lưu hồ sơ, theo dõi nội dung y tế và nhận hỗ trợ chăm sóc sức khỏe thuận tiện hơn."
+    >
+      <form onSubmit={handleRegister} className="space-y-6">
+        <div className="space-y-5">
+          <AuthField
+            label="Họ và tên"
+            icon={<User size={24} />}
             type="text"
-            placeholder="Ten"
-            className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            placeholder="Nhập họ và tên"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
 
-          <input
+          <AuthField
+            label="Email"
+            icon={<Mail size={24} />}
             type="email"
-            placeholder="Email"
-            className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            placeholder="Nhập email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
 
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Mat khau"
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 pr-10 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <button
-              type="button"
-              className="absolute right-3 top-3 text-gray-400 transition hover:text-gray-600"
-              onClick={() => setShowPassword((prev) => !prev)}
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
+          <label className="block">
+            <span className="text-base font-bold text-slate-800">Mật khẩu</span>
+            <div className="mt-3 flex min-h-16 items-center gap-4 rounded-3xl border border-slate-200 bg-slate-50 px-5 transition focus-within:border-cyan-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-cyan-100">
+              <LockKeyhole className="shrink-0 text-cyan-700" size={24} />
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Nhập mật khẩu"
+                className="w-full bg-transparent text-lg text-slate-900 outline-none placeholder:text-slate-400"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                className="shrink-0 text-slate-400 transition hover:text-slate-600"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              >
+                {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
+              </button>
+            </div>
+          </label>
 
-          <input
+          <AuthField
+            label="Nhập lại mật khẩu"
+            icon={<LockKeyhole size={24} />}
             type="password"
-            placeholder="Nhap lai mat khau"
-            className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            placeholder="Nhập lại mật khẩu"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
         </div>
 
         {error && (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mt-4 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white px-4 py-4 text-sm text-emerald-800 shadow-sm">
-            <p className="font-semibold text-emerald-900">
-              Đăng ký thành công
-            </p>
+          <div className="rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white px-5 py-5 text-sm text-emerald-800 shadow-sm">
+            <p className="font-semibold text-emerald-900">Đăng ký thành công</p>
             <p className="mt-1 leading-6">{success}</p>
             <button
               type="button"
-              className="mt-3 inline-flex items-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+              className="mt-4 inline-flex items-center rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-700"
               onClick={() => navigate("/login")}
             >
               Đến trang đăng nhập
@@ -131,22 +135,38 @@ export default function Register() {
 
         <button
           disabled={isSubmitting}
-          className="mt-6 w-full rounded-xl bg-green-600 py-3 text-sm font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-green-300"
+          className="flex min-h-16 w-full items-center justify-center gap-3 rounded-3xl bg-gradient-to-r from-cyan-800 to-cyan-600 px-5 text-lg font-bold text-white shadow-[0_18px_35px_-22px_rgba(14,116,144,0.9)] transition hover:from-cyan-900 hover:to-cyan-700 disabled:cursor-not-allowed disabled:from-cyan-300 disabled:to-cyan-300"
         >
-          {isSubmitting ? "Dang xu ly..." : "Dang ky"}
+          {isSubmitting ? "Đang xử lý..." : "Đăng ký"}
+          {!isSubmitting && <ArrowRight size={24} />}
         </button>
 
-        <p className="mt-4 text-center text-sm text-gray-600">
+        <p className="text-center text-base text-slate-500">
           Đã có tài khoản?{" "}
           <button
             type="button"
-            className="font-medium text-blue-600 hover:text-blue-700"
+            className="font-bold text-cyan-700 hover:text-cyan-800"
             onClick={() => navigate("/login")}
           >
             Đăng nhập
           </button>
         </p>
       </form>
-    </div>
+    </AuthLayout>
+  );
+}
+
+function AuthField({ label, icon, ...props }) {
+  return (
+    <label className="block">
+      <span className="text-base font-bold text-slate-800">{label}</span>
+      <div className="mt-3 flex min-h-16 items-center gap-4 rounded-3xl border border-slate-200 bg-slate-50 px-5 transition focus-within:border-cyan-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-cyan-100">
+        <span className="shrink-0 text-cyan-700">{icon}</span>
+        <input
+          {...props}
+          className="w-full bg-transparent text-lg text-slate-900 outline-none placeholder:text-slate-400"
+        />
+      </div>
+    </label>
   );
 }

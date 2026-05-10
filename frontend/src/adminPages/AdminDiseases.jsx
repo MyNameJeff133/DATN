@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
+import { useSearchParams } from "react-router-dom";
 import {
   diseaseCategoryOptions,
   getCategoryLabel,
@@ -7,6 +8,7 @@ import {
 } from "../constants/medicalData";
 import SeverityBadge from "../pages/SeverityBadge";
 import api from "../services/api";
+import { getStoredToken } from "../services/authStorage";
 
 const emptyForm = {
   name: "",
@@ -29,15 +31,15 @@ export default function AdminDiseases() {
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
   const [selectedLetter, setSelectedLetter] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const isAdmin = user?.role === "admin";
+  const canEdit = user?.role === "admin" || user?.role === "moderator";
 
-  const alphabet = Array.from({ length: 26 }, (_, i) =>
-    String.fromCharCode(65 + i),
-  );
+  const alphabet = Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index));
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getStoredToken();
     if (token) {
       try {
         setUser(jwtDecode(token));
@@ -60,6 +62,14 @@ export default function AdminDiseases() {
     fetchDiseases();
   }, []);
 
+  const clearEditQuery = () => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("edit");
+      return next;
+    });
+  };
+
   const openAddModal = () => {
     if (!isAdmin) return;
     setEditingId(null);
@@ -68,14 +78,13 @@ export default function AdminDiseases() {
   };
 
   const handleEdit = (disease) => {
-    if (!isAdmin) return;
+    if (!canEdit) return;
+
     setEditingId(disease._id);
     setFormData({
       name: disease.name || "",
       category: disease.category || "khac",
-      symptoms: Array.isArray(disease.symptoms)
-        ? disease.symptoms.join(", ")
-        : "",
+      symptoms: Array.isArray(disease.symptoms) ? disease.symptoms.join(", ") : "",
       causes: disease.causes || "",
       treatment: disease.treatment || "",
       prevention: disease.prevention || "",
@@ -86,6 +95,31 @@ export default function AdminDiseases() {
     setShowModal(true);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId || diseases.length === 0 || !canEdit) {
+      return;
+    }
+
+    const found = diseases.find((disease) => disease._id === editId);
+    if (found) {
+      setEditingId(found._id);
+      setFormData({
+        name: found.name || "",
+        category: found.category || "khac",
+        symptoms: Array.isArray(found.symptoms) ? found.symptoms.join(", ") : "",
+        causes: found.causes || "",
+        treatment: found.treatment || "",
+        prevention: found.prevention || "",
+        severity: found.severity || "low",
+        description: found.description || "",
+        image: found.image || "",
+      });
+      setShowModal(true);
+    }
+  }, [searchParams, diseases, canEdit]);
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -93,7 +127,7 @@ export default function AdminDiseases() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!isAdmin) return;
+    if (!canEdit) return;
 
     const payload = {
       ...formData,
@@ -112,6 +146,8 @@ export default function AdminDiseases() {
 
       setShowModal(false);
       setFormData(emptyForm);
+      setEditingId(null);
+      clearEditQuery();
       fetchDiseases();
     } catch (error) {
       console.error(error);
@@ -121,33 +157,25 @@ export default function AdminDiseases() {
 
   const handleDelete = async (id) => {
     if (!isAdmin) return;
-    if (!window.confirm("Xoa benh nay?")) return;
+    if (!window.confirm("Xóa bệnh này?")) return;
 
     try {
       await api.delete(`/diseases/${id}`);
       fetchDiseases();
     } catch (error) {
       console.error(error);
-      alert("Khong the xoa benh.");
+      alert("Không thể xóa bệnh.");
     }
   };
 
-  const normalize = (str) =>
-    str
-      ?.normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toUpperCase();
+  const normalize = (value) =>
+    value?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 
   const filteredDiseases = diseases.filter((disease) => {
     const name = disease.name || "";
-
     const matchesSearch = name.toLowerCase().includes(search.toLowerCase());
-
-    const matchesCategory =
-      filterCategory === "all" || disease.category === filterCategory;
-
-    const matchesAlphabet =
-      !selectedLetter || normalize(name).startsWith(selectedLetter);
+    const matchesCategory = filterCategory === "all" || disease.category === filterCategory;
+    const matchesAlphabet = !selectedLetter || normalize(name).startsWith(selectedLetter);
 
     return matchesSearch && matchesCategory && matchesAlphabet;
   });
@@ -155,17 +183,18 @@ export default function AdminDiseases() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Quan ly benh ly</h1>
-        <p className="mt-2 text-gray-600">
+        <span className="up-kicker">Admin</span>
+        <h1 className="mt-3 text-3xl font-bold text-slate-950">Quản lý bệnh lý</h1>
+        <p className="mt-2 text-slate-600">
           {isAdmin
-            ? "Them, sua va dong bo du lieu benh voi trang tra cuu."
-            : "Kiem duyet vien chi co quyen xem du lieu benh."}
+            ? "Thêm, sửa và đồng bộ dữ liệu bệnh với trang tra cứu."
+            : "Kiểm duyệt viên có thể sửa bệnh hiện có để xử lý góp ý, nhưng không được thêm mới hay xóa."}
         </p>
       </div>
 
       {!isAdmin && (
         <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-          Ban dang o che do chi xem. Chi admin moi duoc them, sua va xoa benh.
+          Ban co the sua benh hien co khi can xu ly gop y. Chi admin moi duoc them va xoa benh.
         </div>
       )}
 
@@ -197,7 +226,7 @@ export default function AdminDiseases() {
               onClick={openAddModal}
               className="rounded-lg bg-blue-600 px-4 py-3 text-sm text-white hover:bg-blue-700"
             >
-              Them benh
+              Thêm bệnh
             </button>
           )}
         </div>
@@ -218,9 +247,7 @@ export default function AdminDiseases() {
             key={letter}
             onClick={() => setSelectedLetter(letter)}
             className={`rounded-lg border px-3 py-2 text-sm ${
-              selectedLetter === letter
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100"
+              selectedLetter === letter ? "bg-blue-600 text-white" : "bg-gray-100"
             }`}
           >
             {letter}
@@ -230,10 +257,7 @@ export default function AdminDiseases() {
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {filteredDiseases.map((disease) => (
-          <div
-            key={disease._id}
-            className="overflow-hidden rounded-xl bg-white shadow-sm"
-          >
+          <div key={disease._id} className="overflow-hidden rounded-xl bg-white shadow-sm">
             {disease.image && (
               <img
                 src={disease.image}
@@ -243,9 +267,7 @@ export default function AdminDiseases() {
             )}
 
             <div className="p-5">
-              <h3 className="text-xl font-semibold text-gray-900">
-                {disease.name}
-              </h3>
+              <h3 className="text-xl font-semibold text-gray-900">{disease.name}</h3>
 
               <p className="mt-1 text-sm text-blue-600">
                 {getCategoryLabel(diseaseCategoryOptions, disease.category)}
@@ -256,15 +278,11 @@ export default function AdminDiseases() {
               </div>
 
               {disease.description && (
-                <p className="mt-3 line-clamp-2 text-sm text-gray-600">
-                  {disease.description}
-                </p>
+                <p className="mt-3 line-clamp-2 text-sm text-gray-600">{disease.description}</p>
               )}
 
               <p className="mt-3 line-clamp-2 text-sm text-gray-600">
-                {Array.isArray(disease.symptoms)
-                  ? disease.symptoms.join(", ")
-                  : ""}
+                {Array.isArray(disease.symptoms) ? disease.symptoms.join(", ") : ""}
               </p>
 
               {disease.image && (
@@ -279,20 +297,22 @@ export default function AdminDiseases() {
                 </a>
               )}
 
-              {isAdmin && (
+              {canEdit && (
                 <div className="mt-4 flex justify-end gap-2">
                   <button
                     onClick={() => handleEdit(disease)}
                     className="rounded bg-yellow-500 px-3 py-1.5 text-xs text-white hover:bg-yellow-600"
                   >
-                    Sua
+                    Sửa
                   </button>
-                  <button
-                    onClick={() => handleDelete(disease._id)}
-                    className="rounded bg-red-500 px-3 py-1.5 text-xs text-white hover:bg-red-600"
-                  >
-                    Xoa
-                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleDelete(disease._id)}
+                      className="rounded bg-red-500 px-3 py-1.5 text-xs text-white hover:bg-red-600"
+                    >
+                      Xóa
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -300,17 +320,14 @@ export default function AdminDiseases() {
         ))}
       </div>
 
-      {showModal && isAdmin && (
+      {showModal && canEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-6 shadow-lg">
             <h3 className="text-2xl font-semibold text-gray-900">
-              {editingId ? "Cap nhat benh" : "Them benh"}
+              {editingId ? "Cập nhật bệnh" : "Thêm bệnh"}
             </h3>
 
-            <form
-              onSubmit={handleSubmit}
-              className="mt-6 grid gap-4 md:grid-cols-2"
-            >
+            <form onSubmit={handleSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
               <input
                 name="name"
                 placeholder="Ten benh"
@@ -356,9 +373,7 @@ export default function AdminDiseases() {
 
               {formData.image && (
                 <div className="rounded-lg border border-dashed border-gray-300 p-4 md:col-span-2">
-                  <p className="mb-3 text-sm font-medium text-gray-700">
-                    Xem truoc anh
-                  </p>
+                  <p className="mb-3 text-sm font-medium text-gray-700">Xem truoc anh</p>
                   <img
                     src={formData.image}
                     alt={formData.name || "Disease preview"}
@@ -418,13 +433,17 @@ export default function AdminDiseases() {
               <div className="flex justify-end gap-3 md:col-span-2">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingId(null);
+                    clearEditQuery();
+                  }}
                   className="rounded border border-gray-300 px-4 py-2 text-sm text-gray-600"
                 >
                   Huy
                 </button>
                 <button className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white">
-                  {editingId ? "Cap nhat" : "Them"}
+                  {editingId ? "Cập nhật" : "Thêm"}
                 </button>
               </div>
             </form>

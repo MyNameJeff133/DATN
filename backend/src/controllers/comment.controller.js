@@ -1,5 +1,8 @@
 import Comment from "../models/Comment.js";
 import ForumPost from "../models/ForumPost.js";
+import { notifyUser } from "../utils/notifyUser.js";
+
+const COMMENT_MAX_LENGTH = 500;
 
 export const createComment = async (req, res) => {
   try {
@@ -9,7 +12,13 @@ export const createComment = async (req, res) => {
       return res.status(400).json({ message: "Noi dung binh luan khong duoc de trong" });
     }
 
-    const post = await ForumPost.findById(postId);
+    if (content.trim().length > COMMENT_MAX_LENGTH) {
+      return res.status(400).json({
+        message: `Noi dung binh luan toi da ${COMMENT_MAX_LENGTH} ky tu`,
+      });
+    }
+
+    const post = await ForumPost.findById(postId).populate("author", "name");
     if (!post) {
       return res.status(404).json({ message: "Khong tim thay bai viet" });
     }
@@ -36,6 +45,15 @@ export const createComment = async (req, res) => {
       "author",
       "name email"
     );
+
+    const postAuthorId = post.author?._id || post.author;
+    if (postAuthorId && String(postAuthorId) !== String(req.user.id)) {
+      const commenterName = populatedComment.author?.name || "Nguoi dung";
+      await notifyUser(
+        postAuthorId,
+        `"${commenterName}" da binh luan bai dang tren dien dan cua ban`,
+      );
+    }
 
     res.status(201).json(populatedComment);
   } catch (error) {

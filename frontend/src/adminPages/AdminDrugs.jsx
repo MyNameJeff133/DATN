@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
+import { useSearchParams } from "react-router-dom";
 import { drugCategoryOptions, getCategoryLabel } from "../constants/medicalData";
 import api from "../services/api";
+import { getStoredToken } from "../services/authStorage";
 
 const emptyForm = {
   name: "",
@@ -25,13 +27,17 @@ export default function AdminDrugs() {
   const [drugs, setDrugs] = useState([]);
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [selectedLetter, setSelectedLetter] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingDrug, setEditingDrug] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
   const [imagePreviewError, setImagePreviewError] = useState(false);
   const [role, setRole] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const isAdmin = role === "admin";
+  const canEdit = role === "admin" || role === "moderator";
+  const alphabet = Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index));
 
   const fetchDrugs = async () => {
     try {
@@ -43,7 +49,7 @@ export default function AdminDrugs() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getStoredToken();
     if (token) {
       try {
         setRole(jwtDecode(token).role || "");
@@ -53,6 +59,14 @@ export default function AdminDrugs() {
     }
     fetchDrugs();
   }, []);
+
+  const clearEditQuery = () => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("edit");
+      return next;
+    });
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -74,8 +88,9 @@ export default function AdminDrugs() {
     setShowModal(true);
   };
 
-  const handleEdit = (drug) => {
-    if (!isAdmin) return;
+  const handleEdit = useCallback((drug) => {
+    if (!canEdit) return;
+
     setEditingDrug(drug);
     setFormData({
       name: drug.name || "",
@@ -88,11 +103,23 @@ export default function AdminDrugs() {
     });
     setImagePreviewError(false);
     setShowModal(true);
-  };
+  }, [canEdit]);
+
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId || drugs.length === 0 || !canEdit) {
+      return;
+    }
+
+    const found = drugs.find((drug) => drug._id === editId);
+    if (found) {
+      handleEdit(found);
+    }
+  }, [searchParams, drugs, canEdit, handleEdit]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!isAdmin) return;
+    if (!canEdit) return;
 
     const dataToSend = {
       ...formData,
@@ -116,10 +143,12 @@ export default function AdminDrugs() {
       setShowModal(false);
       setFormData(emptyForm);
       setImagePreviewError(false);
+      setEditingDrug(null);
+      clearEditQuery();
       fetchDrugs();
     } catch (error) {
       console.error("Drug submit error:", error);
-      alert(error.response?.data?.message || "Có lỗi xảy ra khi lưu thuốc.");
+      alert(error.response?.data?.message || "Co loi xay ra khi luu thuoc.");
     }
   };
 
@@ -136,35 +165,40 @@ export default function AdminDrugs() {
     }
   };
 
-  const filteredDrugs = drugs.filter((drug) => {
-    const matchSearch = drug.name?.toLowerCase().includes(search.toLowerCase());
-    const matchCategory =
-      filterCategory === "all" || drug.category === filterCategory;
+  const normalize = (value) =>
+    value?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 
-    return matchSearch && matchCategory;
+  const filteredDrugs = drugs.filter((drug) => {
+    const name = drug.name || "";
+    const matchSearch = name.toLowerCase().includes(search.toLowerCase());
+    const matchCategory = filterCategory === "all" || drug.category === filterCategory;
+    const matchAlphabet = !selectedLetter || normalize(name).startsWith(selectedLetter);
+
+    return matchSearch && matchCategory && matchAlphabet;
   });
 
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Quan ly thuoc</h1>
-        <p className="mt-2 text-gray-600">
+        <span className="up-kicker">Admin</span>
+        <h1 className="mt-3 text-3xl font-bold text-slate-950">Quản lý thuốc</h1>
+        <p className="mt-2 text-slate-600">
           {isAdmin
             ? "Thêm, sửa và kiểm tra hình ảnh thuốc như trang bệnh."
-            : "Kiểm duyệt viên chỉ có quyền xem dữ liệu thuốc."}
+            : "Kiểm duyệt viên có thể sửa thuốc hiện có để xử lý góp ý, nhưng không được thêm hay xóa."}
         </p>
       </div>
 
       {!isAdmin && (
         <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-          Bạn đang ở chế độ chỉ xem. Chỉ admin mới được thêm, sửa và xóa thuốc.
+          Ban co the sua thuoc hien co khi can xu ly gop y. Chi admin moi duoc them va xoa thuoc.
         </div>
       )}
 
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <input
           type="text"
-          placeholder="Tìm kiếm tên thuốc..."
+          placeholder="Tim kiem ten thuoc..."
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm md:max-w-md"
@@ -176,7 +210,7 @@ export default function AdminDrugs() {
             onChange={(event) => setFilterCategory(event.target.value)}
             className="rounded-lg border border-gray-300 px-4 py-3 text-sm"
           >
-            <option value="all">Tất cả danh mục</option>
+            <option value="all">Tat ca danh muc</option>
             {drugCategoryOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -195,55 +229,65 @@ export default function AdminDrugs() {
         </div>
       </div>
 
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setSelectedLetter("")}
+          className={`rounded-lg border px-3 py-2 text-sm ${
+            selectedLetter === "" ? "bg-blue-600 text-white" : "bg-gray-100"
+          }`}
+        >
+          All
+        </button>
+
+        {alphabet.map((letter) => (
+          <button
+            type="button"
+            key={letter}
+            onClick={() => setSelectedLetter(letter)}
+            className={`rounded-lg border px-3 py-2 text-sm ${
+              selectedLetter === letter ? "bg-blue-600 text-white" : "bg-gray-100"
+            }`}
+          >
+            {letter}
+          </button>
+        ))}
+      </div>
+
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {filteredDrugs.map((drug) => (
-          <div
-            key={drug._id}
-            className="overflow-hidden rounded-xl bg-white shadow-sm"
-          >
+          <div key={drug._id} className="overflow-hidden rounded-xl bg-white shadow-sm">
             {drug.image && (
-              <img
-                src={drug.image}
-                alt={drug.name}
-                className="h-44 w-full object-cover"
-              />
+              <img src={drug.image} alt={drug.name} className="h-44 w-full object-cover" />
             )}
 
             <div className="p-5">
-              <h3 className="text-xl font-semibold text-gray-900">
-                {drug.name}
-              </h3>
+              <h3 className="text-xl font-semibold text-gray-900">{drug.name}</h3>
 
               <p className="mt-1 text-sm text-blue-600">
                 {getCategoryLabel(drugCategoryOptions, drug.category)}
               </p>
 
-              {drug.usage && (
-                <p className="mt-3 line-clamp-2 text-sm text-gray-600">
-                  {drug.usage}
-                </p>
-              )}
+              {drug.usage && <p className="mt-3 line-clamp-2 text-sm text-gray-600">{drug.usage}</p>}
 
               <p className="mt-3 text-sm text-gray-600">
-                <strong>Liều dùng:</strong> {drug.dosage || "-"}
+                <strong>Lieu dung:</strong> {drug.dosage || "-"}
               </p>
 
-              {drug.image && (
+              {drug.image ? (
                 <a
                   href={drug.image}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-4 inline-flex text-xs text-blue-600 underline"
                 >
-                  Xem link ảnh
+                  Xem link anh
                 </a>
+              ) : (
+                <p className="mt-4 text-xs text-gray-400">Chua co anh</p>
               )}
 
-              {!drug.image && (
-                <p className="mt-4 text-xs text-gray-400">Chưa có ảnh</p>
-              )}
-
-              {isAdmin && (
+              {canEdit && (
                 <div className="mt-4 flex justify-end gap-2">
                   <button
                     onClick={() => handleEdit(drug)}
@@ -251,12 +295,14 @@ export default function AdminDrugs() {
                   >
                     Sửa
                   </button>
-                  <button
-                    onClick={() => handleDelete(drug._id)}
-                    className="rounded bg-red-500 px-3 py-1.5 text-xs text-white hover:bg-red-600"
-                  >
-                    Xóa
-                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleDelete(drug._id)}
+                      className="rounded bg-red-500 px-3 py-1.5 text-xs text-white hover:bg-red-600"
+                    >
+                      Xóa
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -264,20 +310,17 @@ export default function AdminDrugs() {
         ))}
       </div>
 
-      {showModal && isAdmin && (
+      {showModal && canEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-6 shadow-lg">
             <h3 className="text-2xl font-semibold text-gray-900">
-              {editingDrug ? "Cap nhat thuoc" : "Them thuoc"}
+              {editingDrug ? "Cập nhật thuốc" : "Thêm thuốc"}
             </h3>
 
-            <form
-              onSubmit={handleSubmit}
-              className="mt-6 grid gap-4 md:grid-cols-2"
-            >
+            <form onSubmit={handleSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
               <input
                 name="name"
-                placeholder="Tên thuốc"
+                placeholder="Ten thuoc"
                 value={formData.name}
                 onChange={handleChange}
                 required
@@ -299,7 +342,7 @@ export default function AdminDrugs() {
 
               <input
                 name="dosage"
-                placeholder="Liều dùng"
+                placeholder="Lieu dung"
                 value={formData.dosage}
                 onChange={handleChange}
                 className="rounded-lg border border-gray-300 px-4 py-3 text-sm"
@@ -308,7 +351,7 @@ export default function AdminDrugs() {
               <input
                 name="image"
                 type="url"
-                placeholder="Link hình ảnh"
+                placeholder="Link hinh anh"
                 value={formData.image}
                 onChange={handleChange}
                 className="rounded-lg border border-gray-300 px-4 py-3 text-sm md:col-span-2"
@@ -316,9 +359,7 @@ export default function AdminDrugs() {
 
               {formData.image && (
                 <div className="rounded-lg border border-dashed border-gray-300 p-4 md:col-span-2">
-                  <p className="mb-3 text-sm font-medium text-gray-700">
-                    Xem trước ảnh
-                  </p>
+                  <p className="mb-3 text-sm font-medium text-gray-700">Xem truoc anh</p>
 
                   {!imagePreviewError ? (
                     <img
@@ -339,18 +380,16 @@ export default function AdminDrugs() {
                     rel="noreferrer"
                     className="mt-3 inline-flex text-sm text-blue-600 underline"
                   >
-                    Mở link ảnh
+                    Mo link anh
                   </a>
 
-                  <p className="mt-2 break-all text-xs text-gray-500">
-                    {formData.image}
-                  </p>
+                  <p className="mt-2 break-all text-xs text-gray-500">{formData.image}</p>
                 </div>
               )}
 
               <textarea
                 name="usage"
-                placeholder="Công dụng"
+                placeholder="Cong dung"
                 value={formData.usage}
                 onChange={handleChange}
                 className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm md:col-span-2"
@@ -358,7 +397,7 @@ export default function AdminDrugs() {
 
               <textarea
                 name="contraindications"
-                placeholder="Chống chỉ định, cách nhau bằng dấu phẩy"
+                placeholder="Chong chi dinh, cach nhau bang dau phay"
                 value={formData.contraindications}
                 onChange={handleChange}
                 className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm md:col-span-2"
@@ -366,7 +405,7 @@ export default function AdminDrugs() {
 
               <textarea
                 name="sideEffects"
-                placeholder="Tác dụng phụ, cách nhau bằng dấu phẩy"
+                placeholder="Tac dung phu, cach nhau bang dau phay"
                 value={formData.sideEffects}
                 onChange={handleChange}
                 className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm md:col-span-2"
@@ -375,10 +414,14 @@ export default function AdminDrugs() {
               <div className="flex justify-end gap-3 md:col-span-2">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingDrug(null);
+                    clearEditQuery();
+                  }}
                   className="rounded border border-gray-300 px-4 py-2 text-sm text-gray-600"
                 >
-                  Hủy
+                  Huy
                 </button>
                 <button className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white">
                   {editingDrug ? "Cập nhật" : "Thêm thuốc"}

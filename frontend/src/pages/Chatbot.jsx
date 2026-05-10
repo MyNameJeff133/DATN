@@ -9,6 +9,7 @@ import {
   Stethoscope,
 } from "lucide-react";
 import api from "../services/api";
+import { getStoredToken } from "../services/authStorage";
 
 const starterPrompts = [
   "Tôi bị sốt và đau họng",
@@ -51,7 +52,7 @@ export default function Chatbot() {
   }, [messages, loading]);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getStoredToken();
     const loggedIn = Boolean(token);
     setIsLoggedIn(loggedIn);
 

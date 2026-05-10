@@ -1,6 +1,9 @@
 import ForumPost from "../models/ForumPost.js";
 import Comment from "../models/Comment.js";
 import User from "../models/User.js";
+import { notifyUser } from "../utils/notifyUser.js";
+
+const POST_REPORT_MAX_LENGTH = 300;
 
 const attachCommentCounts = async (posts) => {
   const validPosts = posts.filter(Boolean);
@@ -170,6 +173,12 @@ export const reportPost = async (req, res) => {
       return res.status(400).json({ message: "Vui long nhap ly do bao cao" });
     }
 
+    if (reason.trim().length > POST_REPORT_MAX_LENGTH) {
+      return res.status(400).json({
+        message: `Ly do bao cao toi da ${POST_REPORT_MAX_LENGTH} ky tu`,
+      });
+    }
+
     const alreadyReported = post.reports.some(
       (report) => String(report.user) === String(req.user.id)
     );
@@ -229,14 +238,12 @@ export const moderatePost = async (req, res) => {
 
     let affectedUser = null;
 
-    if (action === "hide") {
-      post.status = "hidden";
-
+    if (action === "delete") {
       const author = await User.findById(post.author?._id || post.author);
       if (author && author.role !== "admin") {
         author.violationCount = (author.violationCount || 0) + 1;
 
-        if (author.violationCount > 3) {
+        if (author.violationCount >= 3) {
           author.isBanned = true;
           author.banReason = "Dang bai viet vi pham qua 3 lan";
           author.bannedAt = new Date();
@@ -248,10 +255,25 @@ export const moderatePost = async (req, res) => {
           violationCount: author.violationCount,
           isBanned: author.isBanned,
         };
+
+        await notifyUser(
+          author._id,
+          author.isBanned
+            ? `Bai viet "${post.title}" cua ban da bi xoa vi vi pham. Tai khoan cua ban da bi khoa sau ${author.violationCount} lan vi pham.`
+            : `Bai viet "${post.title}" cua ban da bi xoa vi vi pham. So lan vi pham hien tai: ${author.violationCount}.`,
+        );
       }
-    } else if (action === "restore") {
-      post.status = "active";
-      post.reports = [];
+
+      await Comment.deleteMany({ post: post._id });
+      await ForumPost.findByIdAndDelete(post._id);
+
+      return res.json({
+        message: affectedUser?.isBanned
+          ? "Da xoa bai viet va khoa tai khoan vi pham"
+          : "Da xoa bai viet va cong 1 lan vi pham cho tac gia",
+        deletedPostId: req.params.id,
+        affectedUser,
+      });
     } else if (action === "dismiss") {
       post.status = "resolved";
       post.reports = [];

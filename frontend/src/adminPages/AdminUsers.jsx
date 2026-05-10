@@ -1,33 +1,34 @@
 import { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
+import { Search, ShieldAlert, UserCog } from "lucide-react";
 import api from "../services/api";
+import { getStoredToken } from "../services/authStorage";
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState("");
   const [currentRole, setCurrentRole] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
   const [selectedLetter, setSelectedLetter] = useState("");
 
   const isAdmin = currentRole === "admin";
-
-  const alphabet = Array.from({ length: 26 }, (_, i) =>
-    String.fromCharCode(65 + i),
-  );
+  const alphabet = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
 
   const fetchUsers = async () => {
     try {
       const res = await api.get("/auth/users");
       setUsers(res.data);
     } catch (error) {
-      console.error("Loi tai users:", error);
+      console.error("Load users failed:", error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getStoredToken();
 
     if (token) {
       try {
@@ -63,10 +64,7 @@ export default function AdminUsers() {
       setActionLoading(`${user._id}-ban`);
       const reason = user.isBanned
         ? ""
-        : window.prompt(
-            "Nhập ly do khoa tai khoan:",
-            "Tai khoan vi pham quy dinh",
-          ) || "";
+        : window.prompt("Nhập lý do khóa tài khoản:", "Tài khoản vi phạm quy định") || "";
 
       if (!user.isBanned && !reason.trim()) {
         setActionLoading("");
@@ -80,16 +78,14 @@ export default function AdminUsers() {
 
       updateUserInList(res.data.user);
     } catch (error) {
-      alert(
-        error.response?.data?.message || "Khong the cap nhat trang thai khoa",
-      );
+      alert(error.response?.data?.message || "Không thể cập nhật trạng thái khóa");
     } finally {
       setActionLoading("");
     }
   };
 
   const handleDeleteUser = async (user) => {
-    if (!window.confirm(`Xoa tai khoan ${user.email}?`)) {
+    if (!window.confirm(`Xóa tài khoản ${user.email}?`)) {
       return;
     }
 
@@ -98,7 +94,7 @@ export default function AdminUsers() {
       await api.delete(`/auth/users/${user._id}`);
       setUsers((prev) => prev.filter((item) => item._id !== user._id));
     } catch (error) {
-      alert(error.response?.data?.message || "Khong the xoa tai khoan");
+      alert(error.response?.data?.message || "Không thể xóa tài khoản");
     } finally {
       setActionLoading("");
     }
@@ -111,180 +107,233 @@ export default function AdminUsers() {
   };
 
   const getRoleClass = (role) => {
-    if (role === "admin") return "bg-red-100 text-red-600";
-    if (role === "moderator") return "bg-purple-100 text-purple-700";
-    return "bg-blue-100 text-blue-600";
+    if (role === "admin") return "bg-red-50 text-red-700 border-red-100";
+    if (role === "moderator") return "bg-violet-50 text-violet-700 border-violet-100";
+    return "bg-cyan-50 text-cyan-700 border-cyan-100";
   };
 
+  const normalize = (value) =>
+    value?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+
   const filteredUsers = users.filter((user) => {
-    if (!selectedLetter) return true;
-    return user.name?.toUpperCase().startsWith(selectedLetter);
+    const normalizedName = normalize(user.name || "");
+    const searchValue = searchTerm.trim().toLowerCase();
+    const matchesAlphabet = !selectedLetter || normalizedName.startsWith(selectedLetter);
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+    const matchesSearch =
+      !searchValue ||
+      user.name?.toLowerCase().includes(searchValue) ||
+      user.email?.toLowerCase().includes(searchValue);
+
+    return matchesAlphabet && matchesRole && matchesSearch;
   });
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Quan ly nguoi dung</h1>
-        <p className="mt-2 text-gray-600">
-          {loading
-            ? "Dang tai du lieu..."
-            : `${users.length} tai khoan trong he thong`}
-        </p>
-      </div>
+      <PageHeader
+        icon={<UserCog size={17} />}
+        title="Quản lý người dùng"
+        description={loading ? "Đang tải dữ liệu..." : `${users.length} tài khoản trong hệ thống`}
+      />
 
       {!isAdmin && (
-        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Tài khoản của kiểm duyệt viên chỉ được xem danh sách người dùng. Các thao tác bổ nhiệm, khóa và xóa tài khoản chỉ dành cho admin.
+        <div className="mb-5 flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+          <ShieldAlert className="mt-0.5 shrink-0" size={18} />
+          <span>
+            Tài khoản kiểm duyệt viên chỉ được xem danh sách người dùng. Các thao tác bổ nhiệm, khóa và xóa tài khoản chỉ dành cho admin.
+          </span>
         </div>
       )}
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        <button
-          onClick={() => setSelectedLetter("")}
-          className={`px-3 py-1 rounded ${
-            selectedLetter === "" ? "bg-blue-600 text-white" : "bg-gray-200"
-          }`}
-        >
-          All
-        </button>
+      <div className="up-panel mb-4 grid gap-3 md:grid-cols-[1fr_220px]">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+          <input
+            type="text"
+            placeholder="Tìm theo tên hoặc email..."
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            className="up-field pl-10"
+          />
+        </div>
 
+        <select
+          value={roleFilter}
+          onChange={(event) => setRoleFilter(event.target.value)}
+          className="up-field"
+        >
+          <option value="all">Tất cả vai trò</option>
+          <option value="admin">Admin</option>
+          <option value="moderator">Moderator</option>
+          <option value="user">User</option>
+        </select>
+      </div>
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        <FilterChip active={selectedLetter === ""} onClick={() => setSelectedLetter("")}>
+          All
+        </FilterChip>
         {alphabet.map((letter) => (
-          <button
+          <FilterChip
             key={letter}
+            active={selectedLetter === letter}
             onClick={() => setSelectedLetter(letter)}
-            className={`px-3 py-1 rounded ${
-              selectedLetter === letter
-                ? "bg-blue-600 text-white"
-                : "bg-gray-200"
-            }`}
           >
             {letter}
-          </button>
+          </FilterChip>
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Ten
-              </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Email
-              </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Vai tro
-              </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Trang thai
-              </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Vi pham
-              </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Hanh dong
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map((user) => (
-              <tr key={user._id} className="border-t align-top">
-                <td className="px-4 py-3">{user.name}</td>
-                <td className="px-4 py-3">{user.email}</td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`rounded px-2 py-1 text-xs ${getRoleClass(user.role)}`}
-                  >
-                    {getRoleLabel(user.role)}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="space-y-2">
-                    <span
-                      className={`inline-flex rounded px-2 py-1 text-xs ${
-                        user.isBanned
-                          ? "bg-red-100 text-red-700"
-                          : user.isVerified
-                            ? "bg-green-100 text-green-600"
-                            : "bg-yellow-100 text-yellow-700"
-                      }`}
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-slate-50">
+              <tr>
+                {["Tên", "Email", "Vai trò", "Trạng thái", "Vi phạm", "Hành động"].map(
+                  (heading) => (
+                    <th
+                      key={heading}
+                      className="whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.14em] text-slate-500"
                     >
-                      {user.isBanned
-                        ? "Da bi khoa"
-                        : user.isVerified
-                          ? "Da kich hoat"
-                          : "Chua kich hoat"}
-                    </span>
-                    {user.banReason && (
-                      <p className="max-w-xs text-xs text-red-600">
-                        {user.banReason}
-                      </p>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3">{user.violationCount || 0}</td>
-                <td className="px-4 py-3">
-                  {isAdmin ? (
-                    <div className="flex flex-wrap gap-2">
-                      {user.role !== "admin" && (
-                        <>
-                          <button
-                            onClick={() =>
-                              handleRoleChange(
-                                user,
-                                user.role === "moderator"
-                                  ? "user"
-                                  : "moderator",
-                              )
-                            }
-                            disabled={
-                              actionLoading === `${user._id}-role-user` ||
-                              actionLoading === `${user._id}-role-moderator`
-                            }
-                            className="rounded bg-indigo-600 px-3 py-1.5 text-xs text-white hover:bg-indigo-700 disabled:opacity-60"
-                          >
-                            {user.role === "moderator"
-                              ? "Thu hoi moderator"
-                              : "Bo nhiem moderator"}
-                          </button>
-
-                          <button
-                            onClick={() => handleBanToggle(user)}
-                            disabled={actionLoading === `${user._id}-ban`}
-                            className={`rounded px-3 py-1.5 text-xs text-white disabled:opacity-60 ${
-                              user.isBanned
-                                ? "bg-emerald-600 hover:bg-emerald-700"
-                                : "bg-amber-600 hover:bg-amber-700"
-                            }`}
-                          >
-                            {user.isBanned ? "Mo khoa" : "Khoa"}
-                          </button>
-
-                          <button
-                            onClick={() => handleDeleteUser(user)}
-                            disabled={actionLoading === `${user._id}-delete`}
-                            className="rounded bg-red-600 px-3 py-1.5 text-xs text-white hover:bg-red-700 disabled:opacity-60"
-                          >
-                            Xoa tai khoan
-                          </button>
-                        </>
-                      )}
-                      {user.role === "admin" && (
-                        <span className="text-xs text-gray-500">
-                          Tai khoan admin
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-gray-500">Chi xem</span>
-                  )}
-                </td>
+                      {heading}
+                    </th>
+                  ),
+                )}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-4 py-10 text-center text-slate-500">
+                    Không tìm thấy tài khoản phù hợp
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map((user) => (
+                  <tr key={user._id} className="align-top transition hover:bg-slate-50/70">
+                    <td className="px-4 py-4 font-semibold text-slate-900">{user.name}</td>
+                    <td className="px-4 py-4 text-slate-600">{user.email}</td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${getRoleClass(user.role)}`}
+                      >
+                        {getRoleLabel(user.role)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="space-y-2">
+                        <StatusBadge user={user} />
+                        {user.banReason && (
+                          <p className="max-w-xs text-xs leading-5 text-red-600">
+                            {user.banReason}
+                          </p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-slate-700">{user.violationCount || 0}</td>
+                    <td className="px-4 py-4">
+                      {isAdmin ? (
+                        <div className="flex flex-wrap gap-2">
+                          {user.role !== "admin" && (
+                            <>
+                              <button
+                                onClick={() =>
+                                  handleRoleChange(
+                                    user,
+                                    user.role === "moderator" ? "user" : "moderator",
+                                  )
+                                }
+                                disabled={
+                                  actionLoading === `${user._id}-role-user` ||
+                                  actionLoading === `${user._id}-role-moderator`
+                                }
+                                className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-violet-700 disabled:opacity-60"
+                              >
+                                {user.role === "moderator" ? "Thu hồi moderator" : "Bổ nhiệm moderator"}
+                              </button>
+                              <button
+                                onClick={() => handleBanToggle(user)}
+                                disabled={actionLoading === `${user._id}-ban`}
+                                className={`rounded-xl px-3 py-2 text-xs font-semibold text-white transition disabled:opacity-60 ${
+                                  user.isBanned
+                                    ? "bg-emerald-600 hover:bg-emerald-700"
+                                    : "bg-amber-600 hover:bg-amber-700"
+                                }`}
+                              >
+                                {user.isBanned ? "Mở khóa" : "Khóa"}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(user)}
+                                disabled={actionLoading === `${user._id}-delete`}
+                                className="rounded-xl bg-red-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+                              >
+                                Xóa tài khoản
+                              </button>
+                            </>
+                          )}
+                          {user.role === "admin" && (
+                            <span className="text-xs font-medium text-slate-500">
+                              Tài khoản admin
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs font-medium text-slate-500">Chỉ xem</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
+  );
+}
+
+function PageHeader({ icon, title, description }) {
+  return (
+    <div className="mb-6">
+      <span className="up-kicker">{icon} Admin</span>
+      <h1 className="mt-3 text-3xl font-bold text-slate-950">{title}</h1>
+      <p className="mt-2 text-sm leading-7 text-slate-600">{description}</p>
+    </div>
+  );
+}
+
+function FilterChip({ active, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+        active
+          ? "border-cyan-700 bg-cyan-700 text-white"
+          : "border-slate-200 bg-white text-slate-600 hover:border-cyan-200 hover:text-cyan-700"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function StatusBadge({ user }) {
+  const className = user.isBanned
+    ? "bg-red-50 text-red-700 border-red-100"
+    : user.isVerified
+      ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+      : "bg-amber-50 text-amber-700 border-amber-100";
+
+  const label = user.isBanned
+    ? "Đã bị khóa"
+    : user.isVerified
+      ? "Đã kích hoạt"
+      : "Chưa kích hoạt";
+
+  return (
+    <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${className}`}>
+      {label}
+    </span>
   );
 }
