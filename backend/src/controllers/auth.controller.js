@@ -18,6 +18,8 @@ export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
+    console.log("🔍 Register attempt for email:", email);
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
@@ -36,12 +38,21 @@ export const register = async (req, res) => {
     });
 
     try {
+      console.log("📧 Sending verification email...");
       await sendVerificationEmail(email, token);
+      console.log("✅ Verification email sent successfully");
     } catch (emailError) {
+      console.error("❌ Email error details:", {
+        message: emailError.message,
+        code: emailError.code,
+        command: emailError.command,
+        stack: emailError.stack,
+      });
       await User.findByIdAndDelete(user._id);
       console.error("Send verification email error:", emailError);
       return res.status(500).json({
         message: "Không gửi được email xác thực",
+        error: emailError.message,
       });
     }
 
@@ -49,9 +60,13 @@ export const register = async (req, res) => {
       message: "Đăng ký thành công. Kiểm tra email để xác thực.",
     });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Register error:", {
+      message: err.message,
+      stack: err.stack,
+    });
     res.status(500).json({
       message: "Lỗi server",
+      error: err.message,
     });
   }
 };
