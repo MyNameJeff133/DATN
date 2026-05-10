@@ -3,7 +3,7 @@ import nodemailer from "nodemailer";
 // Cấu hình Transporter cho Brevo
 const transporter = nodemailer.createTransport({
   host: "smtp-relay.brevo.com",
-  port: 587,
+  port: 2525,
   secure: false, // true cho port 465, false cho các port khác
   auth: {
     user: process.env.EMAIL_USER, // Email bạn dùng đăng ký Brevo
