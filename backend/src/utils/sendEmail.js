@@ -9,7 +9,7 @@ export const sendVerificationEmail = async (email, token) => {
     },
   });
 
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const frontendUrl = process.env.FRONTEND_URL || "https://ur-pharmacy.vercel.app";
   const verifyLink = `${frontendUrl.replace(/\/$/, "")}/verify/${token}`;
 
   await transporter.sendMail({
