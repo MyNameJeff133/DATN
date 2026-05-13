@@ -8,6 +8,7 @@ import {
   likePost,
   dislikePost,
   reportPost,
+  getMyPosts,
   getReportedPosts,
   moderatePost
 } from "../controllers/forum.controller.js";
@@ -19,6 +20,7 @@ router.patch("/admin/:id/moderate", auth, requireRoles("admin", "moderator"), mo
 
 router.post("/", auth, createPost);
 router.get("/", getPosts);
+router.get("/me/posts", auth, getMyPosts);
 router.get("/:id", getPostById);
 
 router.post("/:id/like", auth, likePost);

@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  FileText,
+  LockKeyhole,
+  MessageCircle,
+  ThumbsDown,
+  ThumbsUp,
+  UserRound,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { clearAuthStorage } from "../services/authStorage";
@@ -26,10 +35,20 @@ export default function Profile() {
   const [passwordData, setPasswordData] = useState(initialPasswordData);
   const [showPassword, setShowPassword] = useState(initialShowPassword);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [myPosts, setMyPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [postsError, setPostsError] = useState("");
+  const [postSearchTerm, setPostSearchTerm] = useState("");
 
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  useEffect(() => {
+    if (tab === "posts") {
+      fetchMyPosts();
+    }
+  }, [tab]);
 
   const fetchProfile = async () => {
     try {
@@ -42,6 +61,20 @@ export default function Profile() {
       });
     } catch (err) {
       setProfileError(err.response?.data?.message || "Không thể tải được thông tin cá nhân");
+    }
+  };
+
+  const fetchMyPosts = async () => {
+    try {
+      setPostsLoading(true);
+      setPostsError("");
+      const res = await api.get("/forum/me/posts");
+      setMyPosts(res.data || []);
+    } catch (err) {
+      setMyPosts([]);
+      setPostsError(err.response?.data?.message || "Không thể tải danh sách bài viết.");
+    } finally {
+      setPostsLoading(false);
     }
   };
 
@@ -124,7 +157,7 @@ export default function Profile() {
   const handleDeleteAccount = async () => {
     if (
       !window.confirm(
-        "Bạn chắc chắn muốn xóa tài khoản? Toàn bộ bài viết, bình luận và lịch sử chat liên quan sẽ bị xóa."
+        "Bạn chắc chắn muốn xóa tài khoản? Toàn bộ bài viết, bình luận và lịch sử chat liên quan sẽ bị xóa.",
       )
     ) {
       return;
@@ -142,6 +175,16 @@ export default function Profile() {
     }
   };
 
+  const filteredMyPosts = myPosts.filter((post) => {
+    const keyword = postSearchTerm.trim().toLowerCase();
+    if (!keyword) return true;
+
+    return (
+      post.title?.toLowerCase().includes(keyword) ||
+      post.content?.toLowerCase().includes(keyword)
+    );
+  });
+
   return (
     <div className="up-page max-w-4xl">
       <div className="up-section overflow-hidden">
@@ -157,12 +200,15 @@ export default function Profile() {
         </div>
 
         <div className="p-6">
-          <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-50 p-1">
+          <div className="inline-flex flex-wrap rounded-2xl border border-slate-200 bg-slate-50 p-1">
             <TabButton active={tab === "info"} onClick={() => setTab("info")}>
               Thông tin cá nhân
             </TabButton>
             <TabButton active={tab === "password"} onClick={() => setTab("password")}>
               Đổi mật khẩu
+            </TabButton>
+            <TabButton active={tab === "posts"} onClick={() => setTab("posts")}>
+              Bài viết đã đăng
             </TabButton>
           </div>
 
@@ -258,6 +304,112 @@ export default function Profile() {
               </button>
             </div>
           )}
+
+          {tab === "posts" && (
+            <div className="mt-6">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-950">Bài viết đã đăng</h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Tra cứu nhanh các bài bạn đã tạo trong diễn đàn.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={fetchMyPosts}
+                  disabled={postsLoading}
+                  className="up-btn-secondary"
+                >
+                  {postsLoading ? "Đang tải..." : "Làm mới"}
+                </button>
+              </div>
+
+              <input
+                type="text"
+                value={postSearchTerm}
+                onChange={(event) => setPostSearchTerm(event.target.value)}
+                placeholder="Tìm theo tiêu đề hoặc nội dung bài viết..."
+                className="up-field mb-4"
+              />
+
+              {postsLoading && (
+                <div className="up-panel p-8 text-center text-slate-500">
+                  Đang tải bài viết đã đăng...
+                </div>
+              )}
+
+              {!postsLoading && postsError && (
+                <div className="up-panel border-red-200 bg-red-50 p-8 text-center text-red-700">
+                  {postsError}
+                </div>
+              )}
+
+              {!postsLoading && !postsError && myPosts.length === 0 && (
+                <div className="up-panel border-dashed p-8 text-center text-slate-500">
+                  Bạn chưa đăng bài viết nào.
+                </div>
+              )}
+
+              {!postsLoading && !postsError && myPosts.length > 0 && filteredMyPosts.length === 0 && (
+                <div className="up-panel border-dashed p-8 text-center text-slate-500">
+                  Không tìm thấy bài viết phù hợp.
+                </div>
+              )}
+
+              {!postsLoading && !postsError && filteredMyPosts.length > 0 && (
+                <div className="space-y-4">
+                  {filteredMyPosts.map((post) => (
+                    <article key={post._id} className="up-card p-5">
+                      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div className="min-w-0">
+                          <div className="mb-3 flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-700">
+                              <FileText size={14} />
+                              {getPostStatusLabel(post.status)}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              {formatDate(post.createdAt)}
+                            </span>
+                          </div>
+                          <h4 className="text-lg font-bold text-slate-950">{post.title}</h4>
+                          <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
+                            {post.content}
+                          </p>
+                        </div>
+
+                        {post.status === "hidden" ? (
+                          <span className="rounded-2xl bg-slate-100 px-4 py-2.5 text-center text-sm font-bold text-slate-500">
+                            Không thể mở
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/forum/${post._id}`)}
+                            className="up-btn-primary shrink-0"
+                          >
+                            Xem chi tiết
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
+                        <PostMetric icon={<Eye size={14} />}>{post.views || 0} lượt xem</PostMetric>
+                        <PostMetric icon={<MessageCircle size={14} />}>
+                          {post.commentCount || 0} bình luận
+                        </PostMetric>
+                        <PostMetric icon={<ThumbsUp size={14} />}>
+                          {post.likes?.length || 0} thích
+                        </PostMetric>
+                        <PostMetric icon={<ThumbsDown size={14} />}>
+                          {post.dislikes?.length || 0} không thích
+                        </PostMetric>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -304,5 +456,37 @@ function PasswordField({ label, show, onToggle, error, ...props }) {
       </div>
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </label>
+  );
+}
+
+function formatDate(value) {
+  if (!value) return "";
+
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function getPostStatusLabel(status) {
+  const labels = {
+    active: "Đang hiển thị",
+    reported: "Đang được xem xét",
+    resolved: "Đã xử lý",
+    hidden: "Đã ẩn",
+  };
+
+  return labels[status] || "Không rõ trạng thái";
+}
+
+function PostMetric({ icon, children }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-3 py-1.5">
+      {icon}
+      {children}
+    </span>
   );
 }

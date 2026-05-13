@@ -90,6 +90,21 @@ export const getPosts = async (req, res) => {
   }
 };
 
+export const getMyPosts = async (req, res) => {
+  try {
+    const posts = await ForumPost.find({ author: req.user.id })
+      .populate("author", "name")
+      .sort({ createdAt: -1 });
+
+    const postsWithCounts = await attachCommentCounts(posts);
+
+    res.json(postsWithCounts);
+  } catch (error) {
+    console.error("Get my posts error:", error);
+    res.status(500).json({ message: "Loi tai danh sach bai viet" });
+  }
+};
+
 export const getPostById = async (req, res) => {
   try {
     const post = await ForumPost.findById(req.params.id).populate("author", "name");
