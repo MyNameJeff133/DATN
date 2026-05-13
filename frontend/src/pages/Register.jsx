@@ -21,7 +21,7 @@ export default function Register() {
     setError("");
     setSuccess("");
 
-    if (!name || !email || !password) {
+    if (!name.trim() || !email.trim() || !password) {
       setError("Vui lòng nhập đầy đủ thông tin");
       return;
     }
@@ -34,14 +34,15 @@ export default function Register() {
     try {
       setIsSubmitting(true);
 
-      await api.post("/auth/register", {
-        name,
-        email,
+      const res = await api.post("/auth/register", {
+        name: name.trim(),
+        email: email.trim(),
         password,
       });
 
       setSuccess(
-        "Tài khoản đã được tạo thành công. Chúng tôi vừa gửi email xác thực đến hộp thư của bạn. Vui lòng kiểm tra email trước khi đăng nhập."
+        res.data?.message ||
+          "Tài khoản đã được tạo thành công. Vui lòng kiểm tra email trước khi đăng nhập."
       );
       setName("");
       setEmail("");

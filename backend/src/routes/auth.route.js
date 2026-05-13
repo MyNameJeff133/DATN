@@ -9,6 +9,7 @@ import {
   getMe,
   adminLogin,
   verifyEmail,
+  resendVerificationEmail,
   getAllUsers,
   deleteUser,
   // approveUser,
@@ -22,6 +23,7 @@ const router = express.Router();
 router.post("/register", register);
 router.post("/login", login);
 router.post("/admin-login", adminLogin);
+router.post("/resend-verification", resendVerificationEmail);
 
 router.get("/verify/:token", verifyEmail);
 router.get("/me", authMiddleware, getMe);

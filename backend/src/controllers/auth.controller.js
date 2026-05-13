@@ -18,12 +18,18 @@ export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    console.log("🔍 Register attempt for email:", email);
+    if (!name?.trim() || !email?.trim() || !password) {
+      return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin" });
+    }
 
-    const existingUser = await User.findOne({ email });
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingUser = await User.findOne({ email: normalizedEmail });
+
     if (existingUser) {
       return res.status(400).json({
-        message: "Email đã được sử dụng",
+        message: existingUser.isVerified
+          ? "Email đã được sử dụng"
+          : "Email đã được đăng ký nhưng chưa xác thực. Vui lòng kiểm tra email hoặc gửi lại email xác thực.",
       });
     }
 
@@ -31,25 +37,17 @@ export const register = async (req, res) => {
     const token = crypto.randomBytes(32).toString("hex");
 
     const user = await User.create({
-      name,
-      email,
+      name: name.trim(),
+      email: normalizedEmail,
       password: hashedPassword,
       verificationToken: token,
     });
 
     try {
-      console.log("📧 Sending verification email...");
-      await sendVerificationEmail(email, token);
-      console.log("✅ Verification email sent successfully");
+      await sendVerificationEmail(normalizedEmail, token);
     } catch (emailError) {
-      console.error("❌ Email error details:", {
-        message: emailError.message,
-        code: emailError.code,
-        command: emailError.command,
-        stack: emailError.stack,
-      });
       await User.findByIdAndDelete(user._id);
-      console.error("Send verification email error:", emailError);
+      console.error("Send verification email error:", emailError.response?.data || emailError);
       return res.status(500).json({
         message: "Không gửi được email xác thực",
         error: emailError.message,
@@ -60,13 +58,44 @@ export const register = async (req, res) => {
       message: "Đăng ký thành công. Kiểm tra email để xác thực.",
     });
   } catch (err) {
-    console.error("❌ Register error:", {
-      message: err.message,
-      stack: err.stack,
-    });
+    console.error("Register error:", err);
     res.status(500).json({
       message: "Lỗi server",
       error: err.message,
+    });
+  }
+};
+
+export const resendVerificationEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email?.trim()) {
+      return res.status(400).json({ message: "Vui lòng nhập email" });
+    }
+
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
+
+    if (!user) {
+      return res.status(404).json({ message: "Email không tồn tại" });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: "Tài khoản đã được xác thực" });
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    user.verificationToken = token;
+    await user.save();
+
+    await sendVerificationEmail(user.email, token);
+
+    res.json({ message: "Đã gửi lại email xác thực. Vui lòng kiểm tra hộp thư." });
+  } catch (error) {
+    console.error("Resend verification email error:", error.response?.data || error);
+    res.status(500).json({
+      message: "Không gửi được email xác thực",
+      error: error.message,
     });
   }
 };
@@ -105,7 +134,7 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email?.trim().toLowerCase() });
     if (!user) {
       return res.status(400).json({ message: "Email không tồn tại" });
     }
@@ -113,6 +142,7 @@ export const login = async (req, res) => {
     if (!user.isVerified) {
       return res.status(401).json({
         message: "Vui lòng xác thực email trước khi đăng nhập",
+        code: "EMAIL_NOT_VERIFIED",
       });
     }
 
@@ -159,7 +189,7 @@ export const updateProfile = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { name },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("-password");
 
     res.json(user);
@@ -201,7 +231,7 @@ export const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const admin = await User.findOne({ email });
+    const admin = await User.findOne({ email: email?.trim().toLowerCase() });
 
     if (!admin || !["admin", "moderator"].includes(admin.role)) {
       return res.status(401).json({ message: "Không có quyền truy cập" });
@@ -302,7 +332,10 @@ export const updateUserRole = async (req, res) => {
     await user.save();
 
     res.json({
-      message: role === "moderator" ? "Đã bỏ nhiệm kiểm duyệt viên" : "Đã thu hồi quyền kiểm duyệt viên",
+      message:
+        role === "moderator"
+          ? "Đã bổ nhiệm kiểm duyệt viên"
+          : "Đã thu hồi quyền kiểm duyệt viên",
       user,
     });
   } catch (error) {

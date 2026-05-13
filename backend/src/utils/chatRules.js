@@ -1,7 +1,7 @@
 export const rules = [
   {
     keywords: ["xin chào", "hello", "hi"],
-    reply: "Xin chào 👋 Tôi có thể giúp bạn tra cứu bệnh hoặc thuốc.",
+    reply: "Xin chào. Tôi có thể giúp bạn tra cứu bệnh hoặc thuốc.",
   },
   {
     keywords: ["bạn là ai"],
@@ -29,6 +29,6 @@ export const rules = [
   {
     keywords: ["paracetamol"],
     reply:
-      "Paracetamol là thuốc giảm đau, hạ sốt. Liều dùng thông thường: 500mg mỗi 4–6 giờ (không quá 4g/ngày).",
+      "Paracetamol là thuốc giảm đau, hạ sốt. Liều dùng thường gặp là 500mg mỗi 4-6 giờ và không quá 4g/ngày, nhưng cần đọc kỹ hướng dẫn sử dụng.",
   },
 ];
