@@ -1,22 +1,47 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import api from "../services/api";
 
 export default function SearchResults() {
   const [searchParams] = useSearchParams();
-  const q = searchParams.get("q");
+  const q = searchParams.get("q") || "";
   const [diseases, setDiseases] = useState([]);
   const [drugs, setDrugs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchResults = async () => {
-      const res = await api.get(`/search?q=${q}`);
-      setDiseases(res.data.diseases);
-      setDrugs(res.data.drugs);
+      try {
+        setLoading(true);
+        setError("");
+
+        const res = await api.get("/search", {
+          params: { q },
+        });
+
+        setDiseases(res.data.diseases || []);
+        setDrugs(res.data.drugs || []);
+      } catch (err) {
+        setDiseases([]);
+        setDrugs([]);
+        setError(err.response?.data?.message || "Không thể tải kết quả tìm kiếm lúc này.");
+      } finally {
+        setLoading(false);
+      }
     };
 
-    if (q) fetchResults();
+    if (q.trim()) {
+      fetchResults();
+    } else {
+      setDiseases([]);
+      setDrugs([]);
+      setError("");
+      setLoading(false);
+    }
   }, [q]);
+
+  const hasResults = diseases.length > 0 || drugs.length > 0;
 
   return (
     <div className="up-page">
@@ -25,12 +50,32 @@ export default function SearchResults() {
         <h2 className="up-title mt-3">Kết quả tìm kiếm: "{q}"</h2>
       </div>
 
-      {diseases.length > 0 && (
+      {loading && (
+        <div className="up-panel p-10 text-center text-slate-500">
+          Đang tải kết quả tìm kiếm...
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="up-panel border-red-200 bg-red-50 p-10 text-center text-red-700">
+          {error}
+        </div>
+      )}
+
+      {!loading && !error && diseases.length > 0 && (
         <ResultSection title="Bệnh">
           {diseases.map((disease) => (
-            <div key={disease._id} className="up-card overflow-hidden">
+            <Link
+              key={disease._id}
+              to={`/diseases?id=${disease._id}`}
+              className="up-card overflow-hidden"
+            >
               {disease.image && (
-                <img src={disease.image} alt={disease.name} className="h-44 w-full object-cover" />
+                <img
+                  src={disease.image}
+                  alt={disease.name}
+                  className="h-44 w-full object-cover"
+                />
               )}
               <div className="p-5">
                 <h3 className="text-xl font-bold text-slate-950">{disease.name}</h3>
@@ -51,25 +96,25 @@ export default function SearchResults() {
                   {Array.isArray(disease.symptoms) ? disease.symptoms.join(", ") : ""}
                 </p>
               </div>
-            </div>
+            </Link>
           ))}
         </ResultSection>
       )}
 
-      {drugs.length > 0 && (
+      {!loading && !error && drugs.length > 0 && (
         <ResultSection title="Thuốc" className="mt-10">
           {drugs.map((drug) => (
-            <div key={drug._id} className="up-card p-5">
+            <Link key={drug._id} to={`/drugs?id=${drug._id}`} className="up-card p-5">
               <h3 className="text-lg font-bold text-slate-950">{drug.name}</h3>
               <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
                 {drug.usage || "Chưa có mô tả"}
               </p>
-            </div>
+            </Link>
           ))}
         </ResultSection>
       )}
 
-      {diseases.length === 0 && drugs.length === 0 && (
+      {!loading && !error && !hasResults && (
         <div className="up-panel p-10 text-center text-slate-500">
           Không tìm thấy kết quả phù hợp
         </div>

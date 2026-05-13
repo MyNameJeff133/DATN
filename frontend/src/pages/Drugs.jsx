@@ -12,6 +12,8 @@ const CONTENT_FEEDBACK_MAX_LENGTH = 1000;
 
 export default function Drugs() {
   const [drugs, setDrugs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [selectedDrug, setSelectedDrug] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -25,7 +27,21 @@ export default function Drugs() {
   const itemsPerPage = 12;
 
   useEffect(() => {
-    api.get("/drugs").then((res) => setDrugs(res.data));
+    const fetchDrugs = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const res = await api.get("/drugs");
+        setDrugs(res.data || []);
+      } catch {
+        setDrugs([]);
+        setError("Không thể tải danh sách thuốc lúc này.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDrugs();
   }, []);
 
   useEffect(() => {
@@ -160,6 +176,19 @@ export default function Drugs() {
         </select>
       </div>
 
+      {loading && (
+        <div className="up-panel p-10 text-center text-slate-500">
+          Đang tải danh sách thuốc...
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="up-panel border-red-200 bg-red-50 p-10 text-center text-red-700">
+          {error}
+        </div>
+      )}
+
+      {!loading && !error && (
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {paginatedDrugs.length > 0 ? (
           paginatedDrugs.map((drug) => (
@@ -192,8 +221,9 @@ export default function Drugs() {
           </div>
         )}
       </div>
+      )}
 
-      {totalPages > 1 && (
+      {!loading && !error && totalPages > 1 && (
         <div className="mt-8 flex items-center justify-center gap-2">
           <button
             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}

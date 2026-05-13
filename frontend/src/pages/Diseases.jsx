@@ -13,6 +13,8 @@ const CONTENT_FEEDBACK_MAX_LENGTH = 1000;
 
 export default function Diseases() {
   const [diseases, setDiseases] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [selectedDisease, setSelectedDisease] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
@@ -26,7 +28,21 @@ export default function Diseases() {
   const itemsPerPage = 12;
 
   useEffect(() => {
-    api.get("/diseases").then((res) => setDiseases(res.data));
+    const fetchDiseases = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const res = await api.get("/diseases");
+        setDiseases(res.data || []);
+      } catch {
+        setDiseases([]);
+        setError("Không thể tải danh sách bệnh lúc này.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDiseases();
   }, []);
 
   useEffect(() => {
@@ -163,6 +179,19 @@ export default function Diseases() {
         </select>
       </div>
 
+      {loading && (
+        <div className="up-panel p-10 text-center text-slate-500">
+          Đang tải danh sách bệnh...
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="up-panel border-red-200 bg-red-50 p-10 text-center text-red-700">
+          {error}
+        </div>
+      )}
+
+      {!loading && !error && (
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {paginatedDiseases.length > 0 ? (
           paginatedDiseases.map((disease) => (
@@ -200,8 +229,9 @@ export default function Diseases() {
           </div>
         )}
       </div>
+      )}
 
-      {totalPages > 1 && (
+      {!loading && !error && totalPages > 1 && (
         <div className="mt-8 flex items-center justify-center gap-2">
           <button
             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
