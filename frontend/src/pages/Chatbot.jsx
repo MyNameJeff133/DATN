@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowUpRight,
   Bot,
   Pill,
   RotateCcw,
@@ -10,12 +9,6 @@ import {
 } from "lucide-react";
 import api from "../services/api";
 import { getStoredToken } from "../services/authStorage";
-
-const starterPrompts = [
-  "Tôi bị sốt và đau họng",
-  "Thuốc paracetamol dùng để làm gì?",
-  "Ho kéo dài có thể liên quan đến bệnh gì?",
-];
 
 const guestStorageKey = "guest_chatbot_messages";
 
@@ -126,8 +119,8 @@ export default function Chatbot() {
     setMessages(defaultMessages);
   };
 
-  const sendMessage = async (presetMessage) => {
-    const content = (presetMessage ?? input).trim();
+  const sendMessage = async () => {
+    const content = input.trim();
     if (!content || loading || sendingRef.current) return;
 
     sendingRef.current = true;
@@ -219,23 +212,6 @@ export default function Chatbot() {
           </button>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {starterPrompts.map((prompt, index) => (
-            <button
-              key={prompt}
-              onClick={() => sendMessage(prompt)}
-              className="rounded-lg border bg-gray-50 px-3 py-2 text-left hover:bg-gray-100"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-semibold uppercase text-gray-400">
-                  gợi ý 0{index + 1}
-                </span>
-                <ArrowUpRight size={12} className="text-gray-400" />
-              </div>
-              <p className="mt-1 text-xs text-gray-700">{prompt}</p>
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto bg-gray-50 px-4 py-5">
