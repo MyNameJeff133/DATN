@@ -131,36 +131,136 @@ const findRelatedDrugsForDisease = (disease, drugs) => {
 const detectIntent = (normalizedMessage, intents) =>
   intents.find((intent) => includesAny(normalizedMessage, intent.keywords)) || null;
 
-const findDiseaseMatch = (normalizedMessage, diseases) => {
-  const exactName = diseases.find((disease) => normalizeText(disease.name) === normalizedMessage);
-  if (exactName) return exactName;
+const entityStopWords = new Set([
+  "anh",
+  "ban",
+  "benh",
+  "bi",
+  "can",
+  "cho",
+  "co",
+  "cua",
+  "dau",
+  "duoc",
+  "gi",
+  "hoi",
+  "la",
+  "loai",
+  "minh",
+  "nay",
+  "toi",
+  "tra",
+  "trieu",
+  "thuoc",
+  "tim",
+  "ve",
+  "xin",
+]);
 
-  const nameInQuestion = diseases.find((disease) => {
-    const normalizedName = normalizeText(disease.name);
-    return normalizedName && normalizedMessage.includes(normalizedName);
-  });
-  if (nameInQuestion) return nameInQuestion;
+const getTokens = (normalizedMessage) =>
+  normalizedMessage.split(" ").filter(Boolean);
 
-  const symptomMatch = diseases.find((disease) =>
-    (disease.symptoms || []).some((symptom) => {
-      const normalizedSymptom = normalizeText(symptom);
-      return normalizedSymptom && normalizedMessage.includes(normalizedSymptom);
-    }),
+const getEntityTokens = (normalizedMessage) =>
+  getTokens(normalizedMessage).filter(
+    (token) => token.length >= 2 && !entityStopWords.has(token),
   );
 
-  return symptomMatch || null;
+const addCandidate = (candidateMap, item, score) => {
+  const key = String(item._id);
+  const current = candidateMap.get(key);
+
+  if (!current || score > current.score) {
+    candidateMap.set(key, { item, score });
+  }
 };
 
-const findDrugMatch = (normalizedMessage, drugs) => {
-  const exactName = drugs.find((drug) => normalizeText(drug.name) === normalizedMessage);
-  if (exactName) return exactName;
+const getUniqueSortedCandidates = (candidateMap) =>
+  [...candidateMap.values()].sort((first, second) => {
+    if (second.score !== first.score) return second.score - first.score;
+    return first.item.name.localeCompare(second.item.name);
+  });
 
-  return (
-    drugs.find((drug) => {
-      const normalizedName = normalizeText(drug.name);
-      return normalizedName && normalizedMessage.includes(normalizedName);
-    }) || null
-  );
+const findDiseaseCandidates = (normalizedMessage, diseases) => {
+  const candidateMap = new Map();
+  const messageTokens = getTokens(normalizedMessage);
+  const entityTokens = getEntityTokens(normalizedMessage);
+
+  diseases.forEach((disease) => {
+    const normalizedName = normalizeText(disease.name);
+
+    if (normalizedName === normalizedMessage) {
+      addCandidate(candidateMap, disease, 100);
+    } else if (normalizedName && normalizedMessage.includes(normalizedName)) {
+      addCandidate(candidateMap, disease, 90);
+    } else if (
+      normalizedName &&
+      normalizedMessage.length >= 2 &&
+      normalizedName.includes(normalizedMessage)
+    ) {
+      addCandidate(candidateMap, disease, 75);
+    } else if (
+      entityTokens.some((token) => token.length >= 3 && normalizedName.includes(token))
+    ) {
+      addCandidate(candidateMap, disease, 55);
+    }
+
+    (disease.symptoms || []).forEach((symptom) => {
+      const normalizedSymptom = normalizeText(symptom);
+      if (!normalizedSymptom) return;
+
+      if (
+        normalizedMessage.includes(normalizedSymptom) ||
+        messageTokens.includes(normalizedSymptom)
+      ) {
+        addCandidate(candidateMap, disease, 70);
+        return;
+      }
+
+      if (
+        normalizedMessage.length >= 2 &&
+        normalizedSymptom.includes(normalizedMessage)
+      ) {
+        addCandidate(candidateMap, disease, 60);
+      }
+    });
+  });
+
+  return getUniqueSortedCandidates(candidateMap);
+};
+
+const findDrugCandidates = (normalizedMessage, drugs) => {
+  const candidateMap = new Map();
+  const entityTokens = getEntityTokens(normalizedMessage);
+
+  drugs.forEach((drug) => {
+    const normalizedName = normalizeText(drug.name);
+    if (!normalizedName) return;
+
+    if (normalizedName === normalizedMessage) {
+      addCandidate(candidateMap, drug, 100);
+      return;
+    }
+
+    if (normalizedMessage.includes(normalizedName)) {
+      addCandidate(candidateMap, drug, 90);
+      return;
+    }
+
+    if (normalizedName.includes(normalizedMessage)) {
+      addCandidate(candidateMap, drug, 80);
+      return;
+    }
+
+    const matchedTokens = entityTokens.filter(
+      (token) => token.length >= 3 && normalizedName.includes(token),
+    );
+
+    if (matchedTokens.length > 0) {
+      addCandidate(candidateMap, drug, 50 + matchedTokens.length);
+    }
+  });
+
+  return getUniqueSortedCandidates(candidateMap);
 };
 
 const buildFocusedDiseaseReply = (disease, intent) => `${intent.label} của ${disease.name}:
@@ -229,6 +329,25 @@ Phòng ngừa: ${bestMatch.prevention || EMPTY_VALUE}${drugList}
 Thông tin chỉ mang tính tham khảo.${severityWarning}`;
 };
 
+const buildClarificationReply = (typeLabel, candidates, originalMessage) => {
+  const displayedCandidates = candidates.slice(0, 8);
+  const candidateList = displayedCandidates
+    .map((candidate, index) => `${index + 1}. ${candidate.item.name}`)
+    .join("\n");
+  const remainingCount = candidates.length - displayedCandidates.length;
+  const remainingText =
+    remainingCount > 0 ? `\n... và ${remainingCount} kết quả khác.` : "";
+
+  return `Mình tìm thấy nhiều ${typeLabel} phù hợp với "${originalMessage}". Bạn muốn tra cứu thông tin nào?\n\n${candidateList}${remainingText}\n\nBạn có thể nhập đúng tên trong danh sách để mình tra cứu chính xác hơn.`;
+};
+
+const shouldAskClarification = (candidates) => {
+  if (candidates.length <= 1) return false;
+
+  const [bestCandidate, secondCandidate] = candidates;
+  return bestCandidate.score < 90 || bestCandidate.score === secondCandidate.score;
+};
+
 const buildReplyFromDatabase = async (message) => {
   const normalized = normalizeText(message);
   const [diseases, drugs] = await Promise.all([
@@ -238,8 +357,26 @@ const buildReplyFromDatabase = async (message) => {
 
   const diseaseIntent = detectIntent(normalized, diseaseFieldIntents);
   const drugIntent = detectIntent(normalized, drugFieldIntents);
-  const diseaseMatch = findDiseaseMatch(normalized, diseases);
-  const drugMatch = findDrugMatch(normalized, drugs);
+  const diseaseCandidates = findDiseaseCandidates(normalized, diseases);
+  const drugCandidates = findDrugCandidates(normalized, drugs);
+  const diseaseMatch = diseaseCandidates[0]?.item || null;
+  const drugMatch = drugCandidates[0]?.item || null;
+
+  if (drugIntent && shouldAskClarification(drugCandidates)) {
+    return buildClarificationReply("thuốc", drugCandidates, message);
+  }
+
+  if (diseaseIntent && shouldAskClarification(diseaseCandidates)) {
+    return buildClarificationReply("bệnh", diseaseCandidates, message);
+  }
+
+  if (!drugIntent && shouldAskClarification(diseaseCandidates)) {
+    return buildClarificationReply("bệnh", diseaseCandidates, message);
+  }
+
+  if (!diseaseIntent && shouldAskClarification(drugCandidates)) {
+    return buildClarificationReply("thuốc", drugCandidates, message);
+  }
 
   if (diseaseIntent && diseaseMatch) {
     return buildFocusedDiseaseReply(diseaseMatch, diseaseIntent);
@@ -281,14 +418,6 @@ const buildReplyFromDatabase = async (message) => {
     }
 
     return buildBestSymptomMatchReply(bestMatch, highestScore, drugs);
-  }
-
-  for (const rule of rules) {
-    for (const keyword of rule.keywords) {
-      if (normalized.includes(normalizeText(keyword))) {
-        return rule.reply;
-      }
-    }
   }
 
   return "Mình chưa tìm thấy thông tin phù hợp. Bạn có thể mô tả rõ hơn triệu chứng, tên bệnh hoặc tên thuốc giúp mình nhé.";
