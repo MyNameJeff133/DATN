@@ -2,7 +2,6 @@ import ChatConversation from "../models/ChatConversation.js";
 import Disease from "../models/Disease.js";
 import Drug from "../models/Drug.js";
 import { normalizeChatText } from "../services/chatbot.service.js";
-import { rules } from "../utils/chatRules.js";
 
 const CHAT_RETENTION_DAYS = 3;
 const EMPTY_VALUE = "Đang cập nhật";
