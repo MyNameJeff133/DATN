@@ -3,6 +3,7 @@ import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import AuthLayout from "../components/AuthLayout";
+import { passwordPolicyMessage, validatePasswordPolicy } from "../utils/passwordPolicy";
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -23,6 +24,11 @@ export default function Register() {
 
     if (!name.trim() || !email.trim() || !password) {
       setError("Vui lòng nhập đầy đủ thông tin");
+      return;
+    }
+
+    if (!validatePasswordPolicy(password)) {
+      setError(passwordPolicyMessage);
       return;
     }
 
@@ -103,6 +109,10 @@ export default function Register() {
               </button>
             </div>
           </label>
+
+          <p className="-mt-2 text-sm leading-6 text-slate-500">
+            Mật khẩu phải có hơn 6 ký tự, gồm chữ hoa, chữ thường, chữ số và ký tự đặc biệt.
+          </p>
 
           <AuthField
             label="Nhập lại mật khẩu"

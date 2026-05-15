@@ -12,6 +12,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { clearAuthStorage } from "../services/authStorage";
+import { passwordPolicyMessage, validatePasswordPolicy } from "../utils/passwordPolicy";
 
 const initialPasswordData = {
   oldPassword: "",
@@ -122,8 +123,8 @@ export default function Profile() {
       newErrors.oldPassword = "Vui lòng nhập mật khẩu cũ";
     }
 
-    if (passwordData.newPassword.length < 6) {
-      newErrors.newPassword = "Mật khẩu phải có ít nhất 6 ký tự";
+    if (!validatePasswordPolicy(passwordData.newPassword)) {
+      newErrors.newPassword = passwordPolicyMessage;
     }
 
     if (passwordData.newPassword === passwordData.oldPassword) {
@@ -282,6 +283,9 @@ export default function Profile() {
                 onToggle={() => setShowPassword((prev) => ({ ...prev, new: !prev.new }))}
                 error={errors.newPassword}
               />
+              <p className="-mt-3 text-sm leading-6 text-slate-500">
+                Mật khẩu phải có hơn 6 ký tự, gồm chữ hoa, chữ thường, chữ số và ký tự đặc biệt.
+              </p>
               <PasswordField
                 label="Xác nhận mật khẩu"
                 name="confirmPassword"

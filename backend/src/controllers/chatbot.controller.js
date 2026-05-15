@@ -5,8 +5,60 @@ import { normalizeChatText } from "../services/chatbot.service.js";
 
 const CHAT_RETENTION_DAYS = 3;
 const EMPTY_VALUE = "Đang cập nhật";
+const CHAT_SPAM_WINDOW_MS = 15 * 1000;
+const CHAT_SPAM_MAX_MESSAGES = 5;
+const CHAT_SPAM_BLOCK_MS = 30 * 1000;
+const chatSpamBuckets = new Map();
 
 const normalizeText = normalizeChatText;
+
+const getChatSpamKey = (req) =>
+  req.user?.id ? `user:${req.user.id}` : `ip:${req.ip || req.socket?.remoteAddress || "unknown"}`;
+
+const cleanupChatSpamBuckets = (now) => {
+  for (const [key, bucket] of chatSpamBuckets.entries()) {
+    const hasRecentMessages = bucket.timestamps.some(
+      (timestamp) => now - timestamp < CHAT_SPAM_WINDOW_MS,
+    );
+
+    if (!hasRecentMessages && bucket.blockedUntil <= now) {
+      chatSpamBuckets.delete(key);
+    }
+  }
+};
+
+const checkChatSpam = (req) => {
+  const now = Date.now();
+  cleanupChatSpamBuckets(now);
+
+  const key = getChatSpamKey(req);
+  const bucket = chatSpamBuckets.get(key) || { timestamps: [], blockedUntil: 0 };
+
+  if (bucket.blockedUntil > now) {
+    return {
+      limited: true,
+      retryAfterSeconds: Math.ceil((bucket.blockedUntil - now) / 1000),
+    };
+  }
+
+  const timestamps = bucket.timestamps.filter(
+    (timestamp) => now - timestamp < CHAT_SPAM_WINDOW_MS,
+  );
+  timestamps.push(now);
+
+  if (timestamps.length > CHAT_SPAM_MAX_MESSAGES) {
+    const blockedUntil = now + CHAT_SPAM_BLOCK_MS;
+    chatSpamBuckets.set(key, { timestamps, blockedUntil });
+
+    return {
+      limited: true,
+      retryAfterSeconds: Math.ceil(CHAT_SPAM_BLOCK_MS / 1000),
+    };
+  }
+
+  chatSpamBuckets.set(key, { timestamps, blockedUntil: 0 });
+  return { limited: false };
+};
 
 const includesAny = (normalizedMessage, keywords) =>
   keywords.some((keyword) => normalizedMessage.includes(normalizeText(keyword)));
@@ -447,6 +499,15 @@ export const handleChat = async (req, res) => {
 
     if (!message) {
       return res.status(400).json({ message: "Thiếu nội dung tin nhắn" });
+    }
+
+    const spamStatus = checkChatSpam(req);
+    if (spamStatus.limited) {
+      res.set("Retry-After", String(spamStatus.retryAfterSeconds));
+      return res.status(429).json({
+        message: `Bạn đang gửi tin nhắn quá nhanh. Vui lòng thử lại sau ${spamStatus.retryAfterSeconds} giây.`,
+        retryAfterSeconds: spamStatus.retryAfterSeconds,
+      });
     }
 
     const reply = await buildReplyFromDatabase(message);

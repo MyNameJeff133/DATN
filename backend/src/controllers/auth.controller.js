@@ -4,6 +4,7 @@ import User from "../models/User.js";
 import { deleteUserAndRelatedData } from "../utils/accountCleanup.js";
 import { sendVerificationEmail } from "../utils/sendEmail.js";
 import { generateToken } from "../utils/jwt.js";
+import { passwordPolicyMessage, validatePasswordPolicy } from "../utils/passwordPolicy.js";
 
 const formatUserResponse = (user) => ({
   id: user._id,
@@ -20,6 +21,10 @@ export const register = async (req, res) => {
 
     if (!name?.trim() || !email?.trim() || !password) {
       return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin" });
+    }
+
+    if (!validatePasswordPolicy(password)) {
+      return res.status(400).json({ message: passwordPolicyMessage });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -202,6 +207,10 @@ export const updateProfile = async (req, res) => {
 export const changePassword = async (req, res) => {
   const { oldPassword, newPassword, confirmPassword } = req.body;
 
+  if (!oldPassword || !newPassword || !confirmPassword) {
+    return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin" });
+  }
+
   const user = await User.findById(req.user.id);
   const isMatch = await bcrypt.compare(oldPassword, user.password);
 
@@ -213,6 +222,10 @@ export const changePassword = async (req, res) => {
     return res.status(400).json({
       message: "Mật khẩu mới không được trùng mật khẩu cũ",
     });
+  }
+
+  if (!validatePasswordPolicy(newPassword)) {
+    return res.status(400).json({ message: passwordPolicyMessage });
   }
 
   if (newPassword !== confirmPassword) {
