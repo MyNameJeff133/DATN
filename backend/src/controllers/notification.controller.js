@@ -17,7 +17,7 @@ export const getMyNotifications = async (req, res) => {
     });
   } catch (error) {
     console.error("Get notifications error:", error);
-    res.status(500).json({ message: "Khong the tai thong bao" });
+    res.status(500).json({ message: "Không thể tải thông báo" });
   }
 };
 
@@ -28,9 +28,9 @@ export const markAllNotificationsRead = async (req, res) => {
       { $set: { isRead: true } },
     );
 
-    res.json({ message: "Da danh dau da doc" });
+    res.json({ message: "Đã đánh dấu là đã đọc" });
   } catch (error) {
     console.error("Mark notifications read error:", error);
-    res.status(500).json({ message: "Khong the cap nhat thong bao" });
+    res.status(500).json({ message: "Không thể cập nhật thông báo" });
   }
 };

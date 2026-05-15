@@ -20,7 +20,7 @@ const normalizeDiseasePayload = (payload) => ({
   name: payload.name?.trim(),
   description: payload.description?.trim?.() || "",
   image: payload.image?.trim?.() || "",
-  category: payload.category || "khac",
+  category: payload.category || "khác",
   symptoms: normalizeList(payload.symptoms),
   causes: payload.causes?.trim?.() || "",
   treatment: payload.treatment?.trim?.() || "",

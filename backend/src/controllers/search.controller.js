@@ -15,7 +15,7 @@ export const searchAll = async (req, res) => {
 
     if (q.length > MAX_SEARCH_LENGTH) {
       return res.status(400).json({
-        message: `Tu khoa tim kiem toi da ${MAX_SEARCH_LENGTH} ky tu`,
+        message: `Từ khóa tìm kiếm tối đa ${MAX_SEARCH_LENGTH} ký tự`,
       });
     }
 

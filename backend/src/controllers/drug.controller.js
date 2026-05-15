@@ -19,7 +19,7 @@ const normalizeDrugPayload = (payload) => ({
   ...payload,
   name: payload.name?.trim(),
   image: payload.image?.trim?.() || "",
-  category: payload.category || "khac",
+  category: payload.category || "khác",
   usage: payload.usage?.trim?.() || "",
   dosage: payload.dosage?.trim?.() || "",
   sideEffects: normalizeList(payload.sideEffects),
@@ -34,7 +34,7 @@ export const getAllDrugs = async (req, res) => {
     const drugs = await Drug.find().sort({ createdAt: -1 });
     res.json(drugs);
   } catch (error) {
-    res.status(500).json({ message: "Loi server" });
+    res.status(500).json({ message: "Lỗi server" });
   }
 };
 
@@ -56,7 +56,7 @@ export const updateDrug = async (req, res) => {
     );
 
     if (!drug) {
-      return res.status(404).json({ message: "Khong tim thay thuoc" });
+      return res.status(404).json({ message: "Không tìm thấy thuốc" });
     }
 
     res.json(drug);
@@ -70,12 +70,12 @@ export const deleteDrug = async (req, res) => {
     const drug = await Drug.findByIdAndDelete(req.params.id);
 
     if (!drug) {
-      return res.status(404).json({ message: "Khong tim thay thuoc" });
+      return res.status(404).json({ message: "Không tìm thấy thuốc" });
     }
 
-    res.json({ message: "Da xoa thuoc" });
+    res.json({ message: "Đã xóa thuốc" });
   } catch (error) {
-    res.status(500).json({ message: "Loi server" });
+    res.status(500).json({ message: "Lỗi server" });
   }
 };
 
@@ -85,7 +85,7 @@ export const deleteDrug = async (req, res) => {
 export const getDrugById = async (req, res) => {
   const drug = await Drug.findById(req.params.id);
   if (!drug) {
-    return res.status(404).json({ message: "Khong tim thay thuoc" });
+    return res.status(404).json({ message: "Không tìm thấy thuốc" });
   }
   res.json(drug);
 };

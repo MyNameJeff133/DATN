@@ -53,7 +53,7 @@ export const createPost = async (req, res) => {
     const { title, content, tags = [] } = req.body;
 
     if (!title?.trim() || !content?.trim()) {
-      return res.status(400).json({ message: "Vui long nhap tieu de va noi dung" });
+      return res.status(400).json({ message: "Vui lòng nhập tiêu đề và nội dung" });
     }
 
     const post = await ForumPost.create({
@@ -69,7 +69,7 @@ export const createPost = async (req, res) => {
     res.status(201).json(postWithCount);
   } catch (error) {
     console.error("Create post error:", error);
-    res.status(500).json({ message: "Loi tao bai viet" });
+    res.status(500).json({ message: "Lỗi tạo bài viết" });
   }
 };
 
@@ -86,7 +86,7 @@ export const getPosts = async (req, res) => {
     res.json(postsWithCounts);
   } catch (error) {
     console.error("Get posts error:", error);
-    res.status(500).json({ message: "Loi server" });
+    res.status(500).json({ message: "Lỗi server" });
   }
 };
 
@@ -101,7 +101,7 @@ export const getMyPosts = async (req, res) => {
     res.json(postsWithCounts);
   } catch (error) {
     console.error("Get my posts error:", error);
-    res.status(500).json({ message: "Loi tai danh sach bai viet" });
+    res.status(500).json({ message: "Lỗi tải danh sách bài viết" });
   }
 };
 
@@ -110,7 +110,7 @@ export const getPostById = async (req, res) => {
     const post = await ForumPost.findById(req.params.id).populate("author", "name");
 
     if (!post || post.status === "hidden") {
-      return res.status(404).json({ message: "Khong tim thay bai viet" });
+      return res.status(404).json({ message: "Không tìm thấy bài viết" });
     }
 
     post.views += 1;
@@ -121,7 +121,7 @@ export const getPostById = async (req, res) => {
     res.json(postWithCount);
   } catch (error) {
     console.error("Get post by id error:", error);
-    res.status(500).json({ message: "Loi server" });
+    res.status(500).json({ message: "Lỗi server" });
   }
 };
 
@@ -129,7 +129,7 @@ export const likePost = async (req, res) => {
   try {
     const post = await ForumPost.findById(req.params.id);
     if (!post) {
-      return res.status(404).json({ message: "Khong tim thay bai viet" });
+      return res.status(404).json({ message: "Không tìm thấy bài viết" });
     }
 
     const userId = req.user.id;
@@ -146,7 +146,7 @@ export const likePost = async (req, res) => {
     res.json(postWithCount);
   } catch (error) {
     console.error("Like post error:", error);
-    res.status(500).json({ message: "Loi xu ly thao tac" });
+    res.status(500).json({ message: "Lỗi xử lý thao tác" });
   }
 };
 
@@ -154,7 +154,7 @@ export const dislikePost = async (req, res) => {
   try {
     const post = await ForumPost.findById(req.params.id);
     if (!post) {
-      return res.status(404).json({ message: "Khong tim thay bai viet" });
+      return res.status(404).json({ message: "Không tìm thấy bài viết" });
     }
 
     const userId = req.user.id;
@@ -171,7 +171,7 @@ export const dislikePost = async (req, res) => {
     res.json(postWithCount);
   } catch (error) {
     console.error("Dislike post error:", error);
-    res.status(500).json({ message: "Loi xu ly thao tac" });
+    res.status(500).json({ message: "Lỗi xử lý thao tác" });
   }
 };
 
@@ -181,16 +181,16 @@ export const reportPost = async (req, res) => {
     const post = await ForumPost.findById(req.params.id);
 
     if (!post || post.status === "hidden") {
-      return res.status(404).json({ message: "Khong tim thay bai viet" });
+      return res.status(404).json({ message: "Không tìm thấy bài viết" });
     }
 
     if (!reason?.trim()) {
-      return res.status(400).json({ message: "Vui long nhap ly do bao cao" });
+      return res.status(400).json({ message: "Vui lòng nhập lý do báo cáo" });
     }
 
     if (reason.trim().length > POST_REPORT_MAX_LENGTH) {
       return res.status(400).json({
-        message: `Ly do bao cao toi da ${POST_REPORT_MAX_LENGTH} ky tu`,
+        message: `Lý do báo cáo tối đa ${POST_REPORT_MAX_LENGTH} ký tự`,
       });
     }
 
@@ -199,7 +199,7 @@ export const reportPost = async (req, res) => {
     );
 
     if (alreadyReported) {
-      return res.status(400).json({ message: "Ban da bao cao bai viet nay roi" });
+      return res.status(400).json({ message: "Bạn đã báo cáo bài viết này rồi" });
     }
 
     post.reports.push({
@@ -213,12 +213,12 @@ export const reportPost = async (req, res) => {
     const postWithCount = await enrichSinglePost(post);
 
     res.json({
-      message: "Bao cao bai viet thanh cong",
+      message: "Báo cáo bài viết thành công",
       post: postWithCount,
     });
   } catch (error) {
     console.error("Report post error:", error);
-    res.status(500).json({ message: "Khong the bao cao bai viet luc nay" });
+    res.status(500).json({ message: "Không thể báo cáo bài viết lúc này" });
   }
 };
 
@@ -236,7 +236,7 @@ export const getReportedPosts = async (req, res) => {
     res.json(postsWithCounts);
   } catch (error) {
     console.error("Get reported posts error:", error);
-    res.status(500).json({ message: "Loi tai danh sach bao cao" });
+    res.status(500).json({ message: "Lỗi tải danh sách báo cáo" });
   }
 };
 
@@ -248,7 +248,7 @@ export const moderatePost = async (req, res) => {
       .populate("reports.user", "name email");
 
     if (!post) {
-      return res.status(404).json({ message: "Khong tim thay bai viet" });
+      return res.status(404).json({ message: "Không tìm thấy bài viết" });
     }
 
     let affectedUser = null;
@@ -260,7 +260,7 @@ export const moderatePost = async (req, res) => {
 
         if (author.violationCount >= 3) {
           author.isBanned = true;
-          author.banReason = "Dang bai viet vi pham qua 3 lan";
+          author.banReason = "Đăng bài viết vi phạm quá 3 lần";
           author.bannedAt = new Date();
         }
 
@@ -274,8 +274,8 @@ export const moderatePost = async (req, res) => {
         await notifyUser(
           author._id,
           author.isBanned
-            ? `Bai viet "${post.title}" cua ban da bi xoa vi vi pham. Tai khoan cua ban da bi khoa sau ${author.violationCount} lan vi pham.`
-            : `Bai viet "${post.title}" cua ban da bi xoa vi vi pham. So lan vi pham hien tai: ${author.violationCount}.`,
+            ? `Bài viết "${post.title}" của bạn đã bị xóa vì vi phạm. Tài khoản của bạn đã bị khóa sau ${author.violationCount} lần vi phạm.`
+            : `Bài viết "${post.title}" của bạn đã bị xóa vì vi phạm. Số lần vi phạm hiện tại: ${author.violationCount}.`,
         );
       }
 
@@ -284,8 +284,8 @@ export const moderatePost = async (req, res) => {
 
       return res.json({
         message: affectedUser?.isBanned
-          ? "Da xoa bai viet va khoa tai khoan vi pham"
-          : "Da xoa bai viet va cong 1 lan vi pham cho tac gia",
+          ? "Đã xóa bài viết và khóa tài khoản vi phạm"
+          : "Đã xóa bài viết và cộng 1 lần vi phạm cho tác giả",
         deletedPostId: req.params.id,
         affectedUser,
       });
@@ -293,7 +293,7 @@ export const moderatePost = async (req, res) => {
       post.status = "resolved";
       post.reports = [];
     } else {
-      return res.status(400).json({ message: "Hanh dong khong hop le" });
+      return res.status(400).json({ message: "Hành động không hợp lệ" });
     }
 
     await post.save();
@@ -301,13 +301,13 @@ export const moderatePost = async (req, res) => {
     const postWithCount = await enrichSinglePost(post);
     res.json({
       message: affectedUser?.isBanned
-        ? "Cap nhat bai viet thanh cong va tai khoan da bi khoa do vi pham qua 3 lan"
-        : "Cap nhat bai viet thanh cong",
+       ? "Cập nhật bài viết thành công và tài khoản đã bị khóa do vi phạm quá 3 lần"
+        : "Cập nhật bài viết thành công",
       post: postWithCount,
       affectedUser,
     });
   } catch (error) {
     console.error("Moderate post error:", error);
-    res.status(500).json({ message: "Khong the cap nhat bai viet" });
+    res.status(500).json({ message: "Không thể cập nhật bài viết" });
   }
 };

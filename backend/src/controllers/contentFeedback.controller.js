@@ -23,22 +23,22 @@ export const createContentFeedback = async (req, res) => {
     const targetConfig = getTargetModel(targetType);
 
     if (!targetConfig) {
-      return res.status(400).json({ message: "Loai noi dung gop y khong hop le" });
+      return res.status(400).json({ message: "Loại nội dung góp ý không hợp lệ" });
     }
 
     if (!targetId || !title?.trim() || !content?.trim()) {
-      return res.status(400).json({ message: "Vui long nhap day du tieu de va noi dung" });
+      return res.status(400).json({ message: "Vui lòng nhập đầy đủ tiêu đề và nội dung" });
     }
 
     if (content.trim().length > CONTENT_FEEDBACK_MAX_LENGTH) {
       return res.status(400).json({
-        message: `Noi dung gop y toi da ${CONTENT_FEEDBACK_MAX_LENGTH} ky tu`,
+        message: `Nội dung góp ý tối đa ${CONTENT_FEEDBACK_MAX_LENGTH} ký tự`,
       });
     }
 
     const target = await targetConfig.model.findById(targetId).select("name");
     if (!target) {
-      return res.status(404).json({ message: "Khong tim thay noi dung duoc gop y" });
+      return res.status(404).json({ message: "Không tìm thấy nội dung được góp ý" });
     }
 
     const feedback = await ContentFeedback.create({
@@ -51,12 +51,12 @@ export const createContentFeedback = async (req, res) => {
     });
 
     res.status(201).json({
-      message: `Da gui gop y cho ${targetConfig.label} "${target.name}"`,
+      message: `Đã gửi góp ý cho ${targetConfig.label} "${target.name}"`,
       feedback,
     });
   } catch (error) {
     console.error("Create content feedback error:", error);
-    res.status(500).json({ message: "Khong the gui gop y luc nay" });
+    res.status(500).json({ message: "Không thể gửi góp ý lúc này" });
   }
 };
 
@@ -74,7 +74,7 @@ export const getContentFeedbacks = async (req, res) => {
     res.json(feedbacks);
   } catch (error) {
     console.error("Get content feedbacks error:", error);
-    res.status(500).json({ message: "Khong the tai danh sach gop y" });
+    res.status(500).json({ message: "Không thể tải danh sách góp ý" });
   }
 };
 
@@ -86,11 +86,11 @@ export const reviewContentFeedback = async (req, res) => {
       .populate("targetId");
 
     if (!feedback) {
-      return res.status(404).json({ message: "Khong tim thay gop y" });
+      return res.status(404).json({ message: "Không tìm thấy góp ý" });
     }
 
     if (!["corrected", "ignored"].includes(action)) {
-      return res.status(400).json({ message: "Hanh dong khong hop le" });
+      return res.status(400).json({ message: "Hành động không hợp lệ" });
     }
 
     feedback.status = action;
@@ -113,11 +113,11 @@ export const reviewContentFeedback = async (req, res) => {
       .populate("targetId");
 
     res.json({
-      message: action === "corrected" ? "Da danh dau da sua thong tin" : "Da bo qua gop y",
+      message: action === "corrected" ? "Đã đánh dấu đã sửa thông tin" : "Đã bỏ qua góp ý",
       feedback: updatedFeedback,
     });
   } catch (error) {
     console.error("Review content feedback error:", error);
-    res.status(500).json({ message: "Khong the xu ly gop y" });
+    res.status(500).json({ message: "Không thể xử lý góp ý" });
   }
 };
