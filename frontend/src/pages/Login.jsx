@@ -84,6 +84,15 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
+        <div className="text-right">
+  <button
+    type="button"
+    onClick={() => navigate("/forgot-password")}
+    className="text-sm font-semibold text-cyan-700 hover:text-cyan-800"
+  >
+    Quên mật khẩu?
+  </button>
+</div>
 
         {error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
@@ -121,6 +130,7 @@ export default function Login() {
           >
             Đăng ký ngay
           </button>
+          
         </p>
       </form>
     </AuthLayout>
@@ -138,6 +148,7 @@ function AuthInput({ label, icon, ...props }) {
           className="w-full bg-transparent text-lg text-slate-900 outline-none placeholder:text-slate-400"
         />
       </div>
+      
     </label>
   );
 }

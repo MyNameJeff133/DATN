@@ -2,9 +2,10 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import User from "../models/User.js";
 import { deleteUserAndRelatedData } from "../utils/accountCleanup.js";
-import { sendVerificationEmail } from "../utils/sendEmail.js";
+import { sendVerificationEmail, sendResetPasswordEmail } from "../utils/sendEmail.js";
 import { generateToken } from "../utils/jwt.js";
 import { passwordPolicyMessage, validatePasswordPolicy } from "../utils/passwordPolicy.js";
+
 
 const formatUserResponse = (user) => ({
   id: user._id,
@@ -14,6 +15,9 @@ const formatUserResponse = (user) => ({
   isBanned: user.isBanned,
   violationCount: user.violationCount || 0,
 });
+
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCK_TIME = 10 * 60 * 1000;
 
 export const register = async (req, res) => {
   try {
@@ -139,9 +143,24 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email: email?.trim().toLowerCase() });
+    const user = await User.findOne({
+      email: email?.trim().toLowerCase(),
+    });
+
     if (!user) {
-      return res.status(400).json({ message: "Email không tồn tại" });
+      return res.status(400).json({
+        message: "Email không tồn tại",
+      });
+    }
+
+    if (user.lockUntil && user.lockUntil > Date.now()) {
+      const minutesLeft = Math.ceil(
+        (user.lockUntil - Date.now()) / 60000,
+      );
+
+      return res.status(429).json({
+        message: `Tài khoản bị tạm khóa. Thử lại sau ${minutesLeft} phút`,
+      });
     }
 
     if (!user.isVerified) {
@@ -158,9 +177,33 @@ export const login = async (req, res) => {
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
+
     if (!isMatch) {
-      return res.status(400).json({ message: "Sai mật khẩu" });
+      user.loginAttempts += 1;
+
+      if (user.loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+        user.lockUntil = Date.now() + LOCK_TIME;
+        user.loginAttempts = 0;
+
+        await user.save();
+
+        return res.status(429).json({
+          message:
+            "Bạn nhập sai quá nhiều lần. Tài khoản bị khóa 10 phút",
+        });
+      }
+
+      await user.save();
+
+      return res.status(400).json({
+        message: `Sai mật khẩu (${user.loginAttempts}/${MAX_LOGIN_ATTEMPTS})`,
+      });
     }
+
+    user.loginAttempts = 0;
+    user.lockUntil = null;
+
+    await user.save();
 
     res.json({
       token: generateToken(user),
@@ -168,7 +211,93 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).json({ message: "Lỗi server" });
+
+    res.status(500).json({
+      message: "Lỗi server",
+    });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({
+      email: email?.trim().toLowerCase(),
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "Email không tồn tại",
+      });
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    user.resetPasswordCode = code;
+    user.resetPasswordExpires = Date.now() + 10 * 60 * 1000;
+
+    await user.save();
+
+    await sendResetPasswordEmail(user.email, code);
+
+    res.json({
+      message: "Đã gửi mã OTP qua email",
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Không gửi được mã OTP",
+    });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, code, newPassword } = req.body;
+
+    const user = await User.findOne({
+      email: email?.trim().toLowerCase(),
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "Không tìm thấy tài khoản",
+      });
+    }
+
+    if (
+      user.resetPasswordCode !== code ||
+      user.resetPasswordExpires < Date.now()
+    ) {
+      return res.status(400).json({
+        message: "OTP không hợp lệ hoặc đã hết hạn",
+      });
+    }
+
+    if (!validatePasswordPolicy(newPassword)) {
+      return res.status(400).json({
+        message: passwordPolicyMessage,
+      });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+
+    user.resetPasswordCode = null;
+    user.resetPasswordExpires = null;
+
+    await user.save();
+
+    res.json({
+      message: "Đổi mật khẩu thành công",
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Lỗi server",
+    });
   }
 };
 

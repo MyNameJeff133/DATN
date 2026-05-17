@@ -1,11 +1,13 @@
 import axios from "axios";
 
+
 export const sendVerificationEmail = async (email, token) => {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     throw new Error("Thiếu EMAIL_USER hoặc EMAIL_PASS trong .env");
   }
 
   const frontendUrl = process.env.FRONTEND_URL || "https://ur-pharmacy.vercel.app";
+  // const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000/";
   const verifyLink = `${frontendUrl.replace(/\/$/, "")}/verify/${token}`;
 
   const response = await axios.post(
@@ -43,6 +45,80 @@ export const sendVerificationEmail = async (email, token) => {
             <p style="font-size:12px; color:#94a3b8;">
               Nếu bạn không đăng ký tài khoản này, vui lòng bỏ qua email.
             </p>
+          </div>
+        </div>
+      `,
+    },
+    {
+      headers: {
+        accept: "application/json",
+        "api-key": process.env.EMAIL_PASS,
+        "content-type": "application/json",
+      },
+    },
+  );
+
+  return response.data;
+};
+
+export const sendResetPasswordEmail = async (email, code) => {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    throw new Error("Thiếu EMAIL_USER hoặc EMAIL_PASS trong .env");
+  }
+
+  const response = await axios.post(
+    "https://api.brevo.com/v3/smtp/email",
+    {
+      sender: {
+        name: "Ur Pharmacy",
+        email: process.env.EMAIL_USER,
+      },
+
+      to: [{ email }],
+
+      subject: "Mã đổi mật khẩu",
+
+      htmlContent: `
+        <div style="font-family: Arial, sans-serif; background:#f5f7fb; padding:20px;">
+          <div style="max-width:600px; margin:auto; background:white; padding:30px; border-radius:16px;">
+
+            <h2 style="color:#0f172a;">Khôi phục mật khẩu</h2>
+
+            <p style="color:#475569; font-size:16px;">
+              Bạn đã yêu cầu đổi mật khẩu cho tài khoản Ur Pharmacy.
+            </p>
+
+            <p style="color:#475569; font-size:16px;">
+              Mã OTP của bạn là:
+            </p>
+
+            <div style="text-align:center; margin:30px 0;">
+              <div
+                style="
+                  display:inline-block;
+                  background:#0e7490;
+                  color:white;
+                  padding:16px 32px;
+                  border-radius:12px;
+                  font-size:32px;
+                  font-weight:bold;
+                  letter-spacing:6px;
+                "
+              >
+                ${code}
+              </div>
+            </div>
+
+            <p style="font-size:14px; color:#64748b;">
+              Mã sẽ hết hạn sau 10 phút.
+            </p>
+
+            <hr style="margin:20px 0; border:none; border-top:1px solid #e2e8f0;" />
+
+            <p style="font-size:12px; color:#94a3b8;">
+              Nếu bạn không yêu cầu đổi mật khẩu, vui lòng bỏ qua email này.
+            </p>
+
           </div>
         </div>
       `,

@@ -61,8 +61,22 @@ const userSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    resetPasswordCode: String,
+    resetPasswordExpires: Date,
+    loginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    lockUntil: Date,
+    
   },
-  { timestamps: true },
+  { timestamps: true,  },
+  
 );
+
+userSchema.virtual("isLocked").get(function () {
+  return !!(this.lockUntil && this.lockUntil > Date.now());
+});
+
 
 export default mongoose.model("User", userSchema);

@@ -8,6 +8,7 @@ import Forum from "./pages/Forum";
 import Chatbot from "./pages/Chatbot";
 import Terms from "./pages/Terms";
 import ForumDetail from "./pages/ForumDetail";
+import ForgotPassword from "./pages/ForgotPassword";
 import SearchResults from "./components/SearchResults";
 import Profile from "./userPages/UserProfile";
 import AdminLogin from "./adminPages/AdminLogin";
@@ -42,6 +43,7 @@ function App() {
           <Route path="chatbot" element={<Chatbot />} />
           <Route path="terms" element={<Terms />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="forgot-password" element={<ForgotPassword />} />
         </Route>
 
         <Route path="/admin-portal-urpharmacy" element={<AdminLogin />} />

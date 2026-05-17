@@ -5,6 +5,8 @@ import {
   login,
   getProfile,
   changePassword,
+  forgotPassword,
+  resetPassword,
   updateProfile,
   getMe,
   adminLogin,
@@ -24,6 +26,8 @@ router.post("/register", register);
 router.post("/login", login);
 router.post("/admin-login", adminLogin);
 router.post("/resend-verification", resendVerificationEmail);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 
 router.get("/verify/:token", verifyEmail);
 router.get("/me", authMiddleware, getMe);
@@ -38,5 +42,6 @@ router.patch("/users/:id/ban", authMiddleware, updateUserBanStatus);
 router.put("/change-password", authMiddleware, changePassword);
 router.put("/profile", authMiddleware, updateProfile);
 router.delete("/profile", authMiddleware, deleteOwnAccount);
+
 
 export default router;
