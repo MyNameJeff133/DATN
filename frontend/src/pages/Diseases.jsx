@@ -25,8 +25,25 @@ export default function Diseases() {
   const [searchParams] = useSearchParams();
   const itemsPerPage = 12;
 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   useEffect(() => {
-    api.get("/diseases").then((res) => setDiseases(res.data));
+    const fetchDiseases = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const res = await api.get("/diseases");
+        setDiseases(res.data || []);
+      } catch (err) {
+        setDiseases([]);
+        setError(err.response?.data?.message || "Không thể tải danh sách bệnh lúc này.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDiseases();
   }, []);
 
   useEffect(() => {
@@ -163,45 +180,59 @@ export default function Diseases() {
         </select>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {paginatedDiseases.length > 0 ? (
-          paginatedDiseases.map((disease) => (
-            <button
-              key={disease._id}
-              onClick={() => setSelectedDisease(disease)}
-              className="overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              {disease.image && (
-                <img
-                  src={disease.image}
-                  alt={disease.name}
-                  loading="lazy"
-                  decoding="async"
-                  className="h-44 w-full object-cover"
-                />
-              )}
+          {loading && (
+        <div className="up-panel p-10 text-center text-slate-500">
+          Đang tải danh sách bệnh...
+        </div>
+      )}
 
-              <div className="p-5">
-                <h3 className="text-xl font-semibold text-slate-900">{disease.name}</h3>
+      {!loading && error && (
+        <div className="up-panel border-red-200 bg-red-50 p-10 text-center text-red-700">
+          {error}
+        </div>
+      )}
 
-                <div className="mt-3">
-                  <SeverityBadge severity={disease.severity} />
+      {!loading && !error && (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {paginatedDiseases.length > 0 ? (
+            paginatedDiseases.map((disease) => (
+              <button
+                key={disease._id}
+                onClick={() => setSelectedDisease(disease)}
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                {disease.image && (
+                  <img
+                    src={disease.image}
+                    alt={disease.name}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-44 w-full object-cover"
+                  />
+                )}
+
+                <div className="p-5">
+                  <h3 className="text-xl font-semibold text-slate-900">{disease.name}</h3>
+
+                  <div className="mt-3">
+                    <SeverityBadge severity={disease.severity} />
+                  </div>
+
+                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
+                    {Array.isArray(disease.symptoms) ? disease.symptoms.join(", ") : ""}
+                  </p>
+
+                  <div className="mt-4 text-sm font-medium text-blue-700">Xem chi tiet</div>
                 </div>
-
-                <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
-                  {Array.isArray(disease.symptoms) ? disease.symptoms.join(", ") : ""}
-                </p>
-
-                <div className="mt-4 text-sm font-medium text-blue-700">Xem chi tiet</div>
-              </div>
-            </button>
-          ))
-        ) : (
-          <div className="col-span-full rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-500 shadow-sm">
-            Khong tim thay benh phu hop
-          </div>
-        )}
-      </div>
+              </button>
+            ))
+          ) : (
+            <div className="col-span-full rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-500 shadow-sm">
+              Khong tim thay benh phu hop
+            </div>
+          )}
+        </div>
+      )}
 
       {totalPages > 1 && (
         <div className="mt-8 flex items-center justify-center gap-2">
