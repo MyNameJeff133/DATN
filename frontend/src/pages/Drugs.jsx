@@ -400,7 +400,6 @@ export default function Drugs() {
                 )}
                 </div>
               </div>
-            )}
           </div>
         </div>
       )}
