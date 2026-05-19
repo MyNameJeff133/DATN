@@ -22,6 +22,7 @@ export default function Diseases() {
   const [feedbackContent, setFeedbackContent] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
   const [searchParams] = useSearchParams();
   const itemsPerPage = 12;
 
@@ -96,6 +97,7 @@ export default function Diseases() {
     setFeedbackContent("");
     setFeedbackMessage("");
     setFeedbackLoading(false);
+    setFeedbackSuccess(false);
   };
 
   const handleSubmitFeedback = async () => {
@@ -129,7 +131,9 @@ export default function Diseases() {
       setFeedbackMessage(res.data.message);
       setFeedbackTitle("");
       setFeedbackContent("");
-      setShowFeedbackForm(false);
+      // Keep form open and show success state
+      setFeedbackSuccess(true);
+      setShowFeedbackForm(true);
     } catch (error) {
       setFeedbackMessage(error.response?.data?.message || "Khong the gui gop y luc nay.");
     } finally {
@@ -343,6 +347,12 @@ export default function Diseases() {
                     </div>
                   ))}
                 </div>
+
+                {feedbackSuccess && (
+                  <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-4 sm:p-5">
+                    <p className="text-sm font-medium text-green-700">{feedbackMessage || "Góp ý đã được gửi thành công."}</p>
+                  </div>
+                )}
 
                 {showFeedbackForm && (
                   <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
