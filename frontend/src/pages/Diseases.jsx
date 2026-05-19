@@ -27,7 +27,6 @@ export default function Diseases() {
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const itemsPerPage = 12;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
