@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import api from "../services/api";
 import { clearAuthStorage, getStoredToken } from "../services/authStorage";
+import ThemeToggle from "../components/ThemeToggle";
 
 const navItems = [
   { path: "/diseases", label: "Bệnh lý" },
@@ -205,6 +206,10 @@ export default function Header() {
             onKeyDown={handleSubmit}
             className="relative ml-auto hidden w-full max-w-md md:block"
           />
+
+          <div className="ml-3 hidden md:flex">
+            <ThemeToggle />
+          </div>
 
           {!token && (
             <div className="hidden items-center gap-2 md:flex">

@@ -3,6 +3,14 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { syncTheme } from './services/theme';
+
+// Apply theme preference early
+if (typeof window !== 'undefined') {
+  try {
+    syncTheme();
+  } catch {}
+}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
