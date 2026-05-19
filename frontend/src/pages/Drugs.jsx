@@ -20,7 +20,7 @@ export default function Drugs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(12);
+  const itemsPerPage = 12;
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [feedbackTitle, setFeedbackTitle] = useState("");
   const [feedbackContent, setFeedbackContent] = useState("");
@@ -28,7 +28,6 @@ export default function Drugs() {
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const itemsPerPage = 12;
 
   useEffect(() => {
     const fetchDrugs = async () => {
@@ -68,16 +67,8 @@ export default function Drugs() {
     }
   }, [searchParams, drugs]);
 
-  const filteredDrugs = drugs.filter((drug) => {
-    const matchesSearch = normalizeText(drug.name).includes(normalizeText(searchTerm));
-    const matchesCategory = selectedCategory ? drug.category === selectedCategory : true;
-
-    return matchesSearch && matchesCategory;
-  });
-
-  const totalPages = Math.ceil(filteredDrugs.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedDrugs = filteredDrugs.slice(startIndex, startIndex + itemsPerPage);
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const paginatedDrugs = drugs;
   const detailSections = [
     {
       title: "Cong dung",
