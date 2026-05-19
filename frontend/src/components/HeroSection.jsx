@@ -15,6 +15,8 @@ export default function HeroSection() {
         <img
           src="/doctorbg.jpg"
           alt="Bác sĩ tư vấn sức khỏe"
+          loading="eager"
+          decoding="async"
           className="h-full w-full object-cover object-[72%_center]"
         />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(10,41,92,0.92)_0%,rgba(26,95,138,0.82)_42%,rgba(37,99,235,0.46)_72%,rgba(255,255,255,0.08)_100%)]" />

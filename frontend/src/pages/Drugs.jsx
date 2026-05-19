@@ -201,6 +201,8 @@ export default function Drugs() {
                 <img
                   src={drug.image}
                   alt={drug.name}
+                  loading="lazy"
+                  decoding="async"
                   className="h-44 w-full object-cover"
                 />
               )}
@@ -288,6 +290,8 @@ export default function Drugs() {
                   <img
                     src={selectedDrug.image}
                     alt={selectedDrug.name}
+                    loading="lazy"
+                    decoding="async"
                     className="mb-6 h-56 w-full rounded-2xl object-cover sm:h-72"
                   />
                 )}

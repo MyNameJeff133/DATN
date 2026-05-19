@@ -74,6 +74,8 @@ export default function SearchResults() {
                 <img
                   src={disease.image}
                   alt={disease.name}
+                  loading="lazy"
+                  decoding="async"
                   className="h-44 w-full object-cover"
                 />
               )}

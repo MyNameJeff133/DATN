@@ -175,6 +175,8 @@ export default function Diseases() {
                 <img
                   src={disease.image}
                   alt={disease.name}
+                  loading="lazy"
+                  decoding="async"
                   className="h-44 w-full object-cover"
                 />
               )}
@@ -272,6 +274,8 @@ export default function Diseases() {
                   <img
                     src={selectedDisease.image}
                     alt={selectedDisease.name}
+                    loading="lazy"
+                    decoding="async"
                     className="mb-6 h-56 w-full rounded-2xl object-cover sm:h-72"
                   />
                 )}

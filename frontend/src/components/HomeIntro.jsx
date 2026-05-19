@@ -17,7 +17,7 @@ export default function HomeIntro() {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
         >
-          <img src="/docto2.png" alt="Bác sĩ" className="mx-auto max-w-sm drop-shadow-sm" />
+          <img src="/docto2.png" alt="Bác sĩ" loading="lazy" decoding="async" className="mx-auto w-full max-w-sm drop-shadow-sm" />
           <div className="mx-auto mt-4 max-w-sm rounded-lg border border-emerald-100 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
             <div className="flex items-center gap-2 font-semibold text-emerald-700">
               <ShieldCheck size={16} />

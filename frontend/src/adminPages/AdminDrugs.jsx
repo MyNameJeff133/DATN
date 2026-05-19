@@ -258,7 +258,7 @@ export default function AdminDrugs() {
         {filteredDrugs.map((drug) => (
           <div key={drug._id} className="overflow-hidden rounded-xl bg-white shadow-sm">
             {drug.image && (
-              <img src={drug.image} alt={drug.name} className="h-44 w-full object-cover" />
+              <img src={drug.image} alt={drug.name} loading="lazy" decoding="async" className="h-44 w-full object-cover" />
             )}
 
             <div className="p-5">
@@ -365,7 +365,7 @@ export default function AdminDrugs() {
                     <img
                       src={formData.image}
                       alt={formData.name || "Drug preview"}
-                      className="h-48 w-full rounded-lg object-cover"
+                      loading="lazy" decoding="async" className="h-48 w-full rounded-lg object-cover"
                       onError={() => setImagePreviewError(true)}
                     />
                   ) : (
