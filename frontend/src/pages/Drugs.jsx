@@ -7,6 +7,7 @@ import {
 } from "../constants/medicalData";
 import api from "../services/api";
 import { getStoredToken } from "../services/authStorage";
+import normalizeText from "../utils/normalizeText";
 
 const CONTENT_FEEDBACK_MAX_LENGTH = 1000;
 
@@ -24,7 +25,7 @@ export default function Drugs() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const itemsPerPage = 12;
 
   useEffect(() => {
@@ -55,7 +56,7 @@ export default function Drugs() {
   }, [searchParams, drugs]);
 
   const filteredDrugs = drugs.filter((drug) => {
-    const matchesSearch = drug.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = normalizeText(drug.name).includes(normalizeText(searchTerm));
     const matchesCategory = selectedCategory ? drug.category === selectedCategory : true;
 
     return matchesSearch && matchesCategory;
@@ -270,6 +271,11 @@ export default function Drugs() {
                   onClick={() => {
                     setSelectedDrug(null);
                     resetFeedbackState();
+                    setSearchParams((prev) => {
+                      const next = new URLSearchParams(prev);
+                      next.delete("id");
+                      return next;
+                    });
                   }}
                   className="up-btn-secondary absolute right-4 top-4 px-3 py-1.5"
                 >

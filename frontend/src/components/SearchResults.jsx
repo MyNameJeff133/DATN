@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "../services/api";
+import normalizeText from "../utils/normalizeText";
 
 export default function SearchResults() {
   const [searchParams] = useSearchParams();
@@ -17,7 +18,7 @@ export default function SearchResults() {
         setError("");
 
         const res = await api.get("/search", {
-          params: { q },
+          params: { q: normalizeText(q) },
         });
 
         setDiseases(res.data.diseases || []);

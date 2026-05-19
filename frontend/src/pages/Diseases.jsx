@@ -8,6 +8,7 @@ import {
 import SeverityBadge from "./SeverityBadge";
 import api from "../services/api";
 import { getStoredToken } from "../services/authStorage";
+import normalizeText from "../utils/normalizeText";
 
 const CONTENT_FEEDBACK_MAX_LENGTH = 1000;
 
@@ -23,7 +24,7 @@ export default function Diseases() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const itemsPerPage = 12;
 
   const [loading, setLoading] = useState(true);
@@ -57,7 +58,7 @@ export default function Diseases() {
   }, [searchParams, diseases]);
 
   const filteredDiseases = diseases.filter((disease) => {
-    const matchesSearch = disease.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = normalizeText(disease.name).includes(normalizeText(searchTerm));
     const matchesGroup = selectedGroup ? disease.category === selectedGroup : true;
 
     return matchesSearch && matchesGroup;
@@ -279,6 +280,11 @@ export default function Diseases() {
                   onClick={() => {
                     setSelectedDisease(null);
                     resetFeedbackState();
+                    setSearchParams((prev) => {
+                      const next = new URLSearchParams(prev);
+                      next.delete("id");
+                      return next;
+                    });
                   }}
                   className="absolute right-4 top-4 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-500 hover:bg-slate-50"
                 >
