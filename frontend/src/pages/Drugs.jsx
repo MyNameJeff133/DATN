@@ -42,8 +42,12 @@ export default function Drugs() {
         };
 
         const res = await api.get("/drugs", { params });
-        const items = res.data.items || res.data || [];
-        const total = typeof res.data.total === 'number' ? res.data.total : (Array.isArray(res.data) ? res.data.length : 0);
+        const items = Array.isArray(res.data.items)
+          ? res.data.items
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+        const total = typeof res.data.total === 'number' ? res.data.total : items.length;
         setDrugs(items);
         setTotalItems(total);
       } catch (err) {
@@ -199,7 +203,7 @@ export default function Drugs() {
 
       {!loading && !error && (
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {paginatedDrugs.length > 0 ? (
+        {Array.isArray(paginatedDrugs) && paginatedDrugs.length > 0 ? (
           paginatedDrugs.map((drug) => (
             <button
               key={drug._id}

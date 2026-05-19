@@ -45,8 +45,12 @@ export default function Diseases() {
         };
 
         const res = await api.get("/diseases", { params });
-        const items = res.data.items || res.data || [];
-        const total = typeof res.data.total === 'number' ? res.data.total : (Array.isArray(res.data) ? res.data.length : 0);
+        const items = Array.isArray(res.data.items)
+          ? res.data.items
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+        const total = typeof res.data.total === 'number' ? res.data.total : items.length;
         setDiseases(items);
         setTotalItems(total);
       } catch (err) {
@@ -204,7 +208,7 @@ export default function Diseases() {
 
       {!loading && !error && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {paginatedDiseases.length > 0 ? (
+          {Array.isArray(paginatedDiseases) && paginatedDiseases.length > 0 ? (
             paginatedDiseases.map((disease) => (
               <button
                 key={disease._id}
