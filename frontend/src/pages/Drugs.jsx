@@ -13,12 +13,14 @@ const CONTENT_FEEDBACK_MAX_LENGTH = 1000;
 
 export default function Drugs() {
   const [drugs, setDrugs] = useState([]);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedDrug, setSelectedDrug] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(12);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [feedbackTitle, setFeedbackTitle] = useState("");
   const [feedbackContent, setFeedbackContent] = useState("");
@@ -33,10 +35,21 @@ export default function Drugs() {
       try {
         setLoading(true);
         setError("");
-        const res = await api.get("/drugs");
-        setDrugs(res.data || []);
-      } catch {
+        const params = {
+          q: searchTerm ? normalizeText(searchTerm) : undefined,
+          category: selectedCategory || undefined,
+          page: currentPage,
+          limit: itemsPerPage,
+        };
+
+        const res = await api.get("/drugs", { params });
+        const items = res.data.items || res.data || [];
+        const total = typeof res.data.total === 'number' ? res.data.total : (Array.isArray(res.data) ? res.data.length : 0);
+        setDrugs(items);
+        setTotalItems(total);
+      } catch (err) {
         setDrugs([]);
+        setTotalItems(0);
         setError("Không thể tải danh sách thuốc lúc này.");
       } finally {
         setLoading(false);
@@ -44,7 +57,7 @@ export default function Drugs() {
     };
 
     fetchDrugs();
-  }, []);
+  }, [searchTerm, selectedCategory, currentPage, itemsPerPage]);
 
   useEffect(() => {
     const id = searchParams.get("id");

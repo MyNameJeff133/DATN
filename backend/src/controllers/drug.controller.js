@@ -29,10 +29,31 @@ const normalizeDrugPayload = (payload) => ({
 /**
  * Lay danh sach thuoc
  */
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 export const getAllDrugs = async (req, res) => {
   try {
-    const drugs = await Drug.find().sort({ createdAt: -1 });
-    res.json(drugs);
+    const q = String(req.query.q || "").trim();
+    const category = req.query.category;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(parseInt(req.query.limit) || 12, 200);
+
+    const filter = {};
+    if (category) filter.category = category;
+
+    if (q) {
+      const regex = new RegExp(escapeRegex(q), "i");
+      filter.$or = [{ name: regex }, { usage: regex }, { category: regex }];
+    }
+
+    const total = await Drug.countDocuments(filter);
+    const drugs = await Drug.find(filter)
+      .collation({ locale: "vi", strength: 1 })
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    res.json({ items: drugs, total });
   } catch (error) {
     res.status(500).json({ message: "Lỗi server" });
   }

@@ -21,8 +21,8 @@ export default function SearchResults() {
           params: { q: normalizeText(q) },
         });
 
-        setDiseases(res.data.diseases || []);
-        setDrugs(res.data.drugs || []);
+        setDiseases(res.data.diseases || res.data.items || []);
+        setDrugs(res.data.drugs || res.data.items || []);
       } catch (err) {
         setDiseases([]);
         setDrugs([]);

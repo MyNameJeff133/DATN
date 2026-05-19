@@ -14,10 +14,12 @@ const CONTENT_FEEDBACK_MAX_LENGTH = 1000;
 
 export default function Diseases() {
   const [diseases, setDiseases] = useState([]);
+  const [totalItems, setTotalItems] = useState(0);
   const [selectedDisease, setSelectedDisease] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(12);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [feedbackTitle, setFeedbackTitle] = useState("");
   const [feedbackContent, setFeedbackContent] = useState("");
@@ -35,10 +37,21 @@ export default function Diseases() {
       try {
         setLoading(true);
         setError("");
-        const res = await api.get("/diseases");
-        setDiseases(res.data || []);
+        const params = {
+          q: searchTerm ? normalizeText(searchTerm) : undefined,
+          category: selectedGroup || undefined,
+          page: currentPage,
+          limit: itemsPerPage,
+        };
+
+        const res = await api.get("/diseases", { params });
+        const items = res.data.items || res.data || [];
+        const total = typeof res.data.total === 'number' ? res.data.total : (Array.isArray(res.data) ? res.data.length : 0);
+        setDiseases(items);
+        setTotalItems(total);
       } catch (err) {
         setDiseases([]);
+        setTotalItems(0);
         setError(err.response?.data?.message || "Không thể tải danh sách bệnh lúc này.");
       } finally {
         setLoading(false);
@@ -46,7 +59,7 @@ export default function Diseases() {
     };
 
     fetchDiseases();
-  }, []);
+  }, [searchTerm, selectedGroup, currentPage, itemsPerPage]);
 
   useEffect(() => {
     const id = searchParams.get("id");
@@ -57,16 +70,8 @@ export default function Diseases() {
     }
   }, [searchParams, diseases]);
 
-  const filteredDiseases = diseases.filter((disease) => {
-    const matchesSearch = normalizeText(disease.name).includes(normalizeText(searchTerm));
-    const matchesGroup = selectedGroup ? disease.category === selectedGroup : true;
-
-    return matchesSearch && matchesGroup;
-  });
-
-  const totalPages = Math.ceil(filteredDiseases.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedDiseases = filteredDiseases.slice(startIndex, startIndex + itemsPerPage);
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const paginatedDiseases = diseases;
   const detailSections = [
     selectedDisease?.description && {
       title: "Mo ta",
