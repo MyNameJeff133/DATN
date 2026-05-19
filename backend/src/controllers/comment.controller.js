@@ -9,18 +9,18 @@ export const createComment = async (req, res) => {
     const { content, postId, parentComment } = req.body;
 
     if (!content?.trim()) {
-      return res.status(400).json({ message: "Noi dung binh luan khong duoc de trong" });
+      return res.status(400).json({ message: "Nội dung bình luận không được để trống" });
     }
 
     if (content.trim().length > COMMENT_MAX_LENGTH) {
       return res.status(400).json({
-        message: `Noi dung binh luan toi da ${COMMENT_MAX_LENGTH} ky tu`,
+        message: `Nội dung bình luận tối đa ${COMMENT_MAX_LENGTH} ký tự`,
       });
     }
 
     const post = await ForumPost.findById(postId).populate("author", "name");
     if (!post) {
-      return res.status(404).json({ message: "Khong tim thay bai viet" });
+      return res.status(404).json({ message: "Không tìm thấy bài viết" });
     }
 
     if (parentComment) {
@@ -30,7 +30,7 @@ export const createComment = async (req, res) => {
       });
 
       if (!parent) {
-        return res.status(400).json({ message: "Binh luan cha khong hop le" });
+        return res.status(400).json({ message: "Bình luận cha không hợp lệ" });
       }
     }
 
@@ -48,17 +48,17 @@ export const createComment = async (req, res) => {
 
     const postAuthorId = post.author?._id || post.author;
     if (postAuthorId && String(postAuthorId) !== String(req.user.id)) {
-      const commenterName = populatedComment.author?.name || "Nguoi dung";
+      const commenterName = populatedComment.author?.name || "Người dùng";
       await notifyUser(
         postAuthorId,
-        `"${commenterName}" da binh luan bai dang tren dien dan cua ban`,
+        `"${commenterName}" đã bình luận bài đăng trên diễn đàn của bạn`,
       );
     }
 
     res.status(201).json(populatedComment);
   } catch (error) {
     console.error("Create comment error:", error);
-    res.status(500).json({ message: "Loi tao comment" });
+    res.status(500).json({ message: "Lỗi tạo bình luận" });
   }
 };
 
@@ -68,7 +68,7 @@ export const getCommentsByPost = async (req, res) => {
 
     const post = await ForumPost.findById(postId);
     if (!post) {
-      return res.status(404).json({ message: "Khong tim thay bai viet" });
+      return res.status(404).json({ message: "Không tìm thấy bài viết" });
     }
 
     const comments = await Comment.find({ post: postId })
@@ -78,6 +78,6 @@ export const getCommentsByPost = async (req, res) => {
     res.json(comments);
   } catch (error) {
     console.error("Get comments error:", error);
-    res.status(500).json({ message: "Loi lay danh sach comment" });
+    res.status(500).json({ message: "Lỗi lấy danh sách bình luận" });
   }
 };
