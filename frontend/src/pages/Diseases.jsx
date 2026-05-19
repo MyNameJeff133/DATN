@@ -19,7 +19,7 @@ export default function Diseases() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(12);
+  const itemsPerPage = 12;
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [feedbackTitle, setFeedbackTitle] = useState("");
   const [feedbackContent, setFeedbackContent] = useState("");
