@@ -8,7 +8,6 @@ import {
 import SeverityBadge from "./SeverityBadge";
 import api from "../services/api";
 import { getStoredToken } from "../services/authStorage";
-import normalizeText from "../utils/normalizeText";
 
 const CONTENT_FEEDBACK_MAX_LENGTH = 1000;
 
@@ -37,7 +36,7 @@ export default function Diseases() {
         setLoading(true);
         setError("");
         const params = {
-          q: searchTerm ? normalizeText(searchTerm) : undefined,
+          q: searchTerm.trim() || undefined,
           category: selectedGroup || undefined,
           page: currentPage,
           limit: itemsPerPage,
@@ -67,10 +66,26 @@ export default function Diseases() {
   useEffect(() => {
     const id = searchParams.get("id");
 
-    if (id && diseases.length > 0) {
-      const found = diseases.find((disease) => disease._id === id);
-      if (found) setSelectedDisease(found);
+    if (!id) {
+      return;
     }
+
+    const found = diseases.find((disease) => disease._id === id);
+    if (found) {
+      setSelectedDisease(found);
+      return;
+    }
+
+    const fetchSelectedDisease = async () => {
+      try {
+        const res = await api.get(`/diseases/${id}`);
+        setSelectedDisease(res.data);
+      } catch {
+        setSelectedDisease(null);
+      }
+    };
+
+    fetchSelectedDisease();
   }, [searchParams, diseases]);
 
   const totalPages = Math.ceil(totalItems / itemsPerPage);

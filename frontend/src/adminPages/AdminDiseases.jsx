@@ -22,6 +22,14 @@ const emptyForm = {
   image: "",
 };
 
+const getListItems = (data) => {
+  if (Array.isArray(data?.items)) {
+    return data.items;
+  }
+
+  return Array.isArray(data) ? data : [];
+};
+
 export default function AdminDiseases() {
   const [diseases, setDiseases] = useState([]);
   const [user, setUser] = useState(null);
@@ -51,10 +59,11 @@ export default function AdminDiseases() {
 
   const fetchDiseases = async () => {
     try {
-      const res = await api.get("/diseases");
-      setDiseases(res.data);
+      const res = await api.get("/diseases", { params: { limit: 200 } });
+      setDiseases(getListItems(res.data));
     } catch (error) {
       console.error(error);
+      setDiseases([]);
     }
   };
 

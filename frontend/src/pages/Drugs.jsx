@@ -7,7 +7,6 @@ import {
 } from "../constants/medicalData";
 import api from "../services/api";
 import { getStoredToken } from "../services/authStorage";
-import normalizeText from "../utils/normalizeText";
 
 const CONTENT_FEEDBACK_MAX_LENGTH = 1000;
 
@@ -35,7 +34,7 @@ export default function Drugs() {
         setLoading(true);
         setError("");
         const params = {
-          q: searchTerm ? normalizeText(searchTerm) : undefined,
+          q: searchTerm.trim() || undefined,
           category: selectedCategory || undefined,
           page: currentPage,
           limit: itemsPerPage,
@@ -65,10 +64,26 @@ export default function Drugs() {
   useEffect(() => {
     const id = searchParams.get("id");
 
-    if (id && drugs.length > 0) {
-      const found = drugs.find((drug) => drug._id === id);
-      if (found) setSelectedDrug(found);
+    if (!id) {
+      return;
     }
+
+    const found = drugs.find((drug) => drug._id === id);
+    if (found) {
+      setSelectedDrug(found);
+      return;
+    }
+
+    const fetchSelectedDrug = async () => {
+      try {
+        const res = await api.get(`/drugs/${id}`);
+        setSelectedDrug(res.data);
+      } catch {
+        setSelectedDrug(null);
+      }
+    };
+
+    fetchSelectedDrug();
   }, [searchParams, drugs]);
 
   const totalPages = Math.ceil(totalItems / itemsPerPage);

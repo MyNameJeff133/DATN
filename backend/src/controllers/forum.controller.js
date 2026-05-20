@@ -142,6 +142,7 @@ export const likePost = async (req, res) => {
     }
 
     await post.save();
+    await post.populate("author", "name");
     const postWithCount = await enrichSinglePost(post);
     res.json(postWithCount);
   } catch (error) {
@@ -167,6 +168,7 @@ export const dislikePost = async (req, res) => {
     }
 
     await post.save();
+    await post.populate("author", "name");
     const postWithCount = await enrichSinglePost(post);
     res.json(postWithCount);
   } catch (error) {
@@ -209,6 +211,7 @@ export const reportPost = async (req, res) => {
     post.status = "reported";
 
     await post.save();
+    await post.populate("author", "name");
 
     const postWithCount = await enrichSinglePost(post);
 

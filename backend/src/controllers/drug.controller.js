@@ -1,4 +1,5 @@
 import Drug from "../models/Drug.js";
+import { createVietnameseSearchRegex } from "../utils/searchRegex.js";
 
 const normalizeList = (value) => {
   if (Array.isArray(value)) {
@@ -19,7 +20,7 @@ const normalizeDrugPayload = (payload) => ({
   ...payload,
   name: payload.name?.trim(),
   image: payload.image?.trim?.() || "",
-  category: payload.category || "khác",
+  category: payload.category || "khac",
   usage: payload.usage?.trim?.() || "",
   dosage: payload.dosage?.trim?.() || "",
   sideEffects: normalizeList(payload.sideEffects),
@@ -29,20 +30,19 @@ const normalizeDrugPayload = (payload) => ({
 /**
  * Lay danh sach thuoc
  */
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
 export const getAllDrugs = async (req, res) => {
   try {
     const q = String(req.query.q || "").trim();
     const category = req.query.category;
     const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(parseInt(req.query.limit) || 12, 200);
+    const requestedLimit = parseInt(req.query.limit, 10) || 12;
+    const limit = Math.min(Math.max(requestedLimit, 1), 200);
 
     const filter = {};
     if (category) filter.category = category;
 
     if (q) {
-      const regex = new RegExp(escapeRegex(q), "i");
+      const regex = createVietnameseSearchRegex(q);
       filter.$or = [{ name: regex }, { usage: regex }, { category: regex }];
     }
 
@@ -104,11 +104,15 @@ export const deleteDrug = async (req, res) => {
  * Lay chi tiet thuoc
  */
 export const getDrugById = async (req, res) => {
-  const drug = await Drug.findById(req.params.id);
-  if (!drug) {
-    return res.status(404).json({ message: "Không tìm thấy thuốc" });
+  try {
+    const drug = await Drug.findById(req.params.id);
+    if (!drug) {
+      return res.status(404).json({ message: "Không tìm thấy thuốc" });
+    }
+    res.json(drug);
+  } catch (error) {
+    res.status(400).json({ message: "Id thuốc không hợp lệ" });
   }
-  res.json(drug);
 };
 
 /**

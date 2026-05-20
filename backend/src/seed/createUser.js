@@ -8,9 +8,11 @@ const createUser = async () => {
   const hashedPassword = await bcrypt.hash("123456", 10);
 
   await User.create({
+    name: "User",
     email: "user@gmail.com",
     password: hashedPassword,
     role: "user",
+    isVerified: true,
   });
 
   console.log("User created");

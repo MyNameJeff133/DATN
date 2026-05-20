@@ -19,11 +19,19 @@ const formatUserResponse = (user) => ({
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCK_TIME = 10 * 60 * 1000;
 
+const normalizeEmail = (email) =>
+  typeof email === "string" ? email.trim().toLowerCase() : "";
+
+const normalizeName = (name) =>
+  typeof name === "string" ? name.trim() : "";
+
 export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
+    const normalizedName = normalizeName(name);
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!name?.trim() || !email?.trim() || !password) {
+    if (!normalizedName || !normalizedEmail || !password) {
       return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin" });
     }
 
@@ -31,7 +39,6 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: passwordPolicyMessage });
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
     const existingUser = await User.findOne({ email: normalizedEmail });
 
     if (existingUser) {
@@ -46,7 +53,7 @@ export const register = async (req, res) => {
     const token = crypto.randomBytes(32).toString("hex");
 
     const user = await User.create({
-      name: name.trim(),
+      name: normalizedName,
       email: normalizedEmail,
       password: hashedPassword,
       verificationToken: token,
@@ -78,12 +85,13 @@ export const register = async (req, res) => {
 export const resendVerificationEmail = async (req, res) => {
   try {
     const { email } = req.body;
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!email?.trim()) {
+    if (!normalizedEmail) {
       return res.status(400).json({ message: "Vui lòng nhập email" });
     }
 
-    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
       return res.status(404).json({ message: "Email không tồn tại" });
@@ -142,9 +150,16 @@ export const verifyEmail = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = normalizeEmail(email);
+
+    if (!normalizedEmail || !password) {
+      return res.status(400).json({
+        message: "Vui lòng nhập email và mật khẩu",
+      });
+    }
 
     const user = await User.findOne({
-      email: email?.trim().toLowerCase(),
+      email: normalizedEmail,
     });
 
     if (!user) {
@@ -221,9 +236,16 @@ export const login = async (req, res) => {
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
+    const normalizedEmail = normalizeEmail(email);
+
+    if (!normalizedEmail) {
+      return res.status(400).json({
+        message: "Vui lòng nhập email",
+      });
+    }
 
     const user = await User.findOne({
-      email: email?.trim().toLowerCase(),
+      email: normalizedEmail,
     });
 
     if (!user) {
@@ -256,9 +278,17 @@ export const forgotPassword = async (req, res) => {
 export const resetPassword = async (req, res) => {
   try {
     const { email, code, newPassword } = req.body;
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedCode = String(code || "").trim();
+
+    if (!normalizedEmail || !normalizedCode || !newPassword) {
+      return res.status(400).json({
+        message: "Vui lòng nhập đầy đủ email, OTP và mật khẩu mới",
+      });
+    }
 
     const user = await User.findOne({
-      email: email?.trim().toLowerCase(),
+      email: normalizedEmail,
     });
 
     if (!user) {
@@ -268,7 +298,7 @@ export const resetPassword = async (req, res) => {
     }
 
     if (
-      user.resetPasswordCode !== code ||
+      user.resetPasswordCode !== normalizedCode ||
       user.resetPasswordExpires < Date.now()
     ) {
       return res.status(400).json({
@@ -319,10 +349,15 @@ export const getProfile = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const { name } = req.body;
+    const normalizedName = normalizeName(name);
+
+    if (!normalizedName) {
+      return res.status(400).json({ message: "Vui lòng nhập họ tên" });
+    }
 
     const user = await User.findByIdAndUpdate(
       req.user.id,
-      { name },
+      { name: normalizedName },
       { new: true, runValidators: true },
     ).select("-password");
 
@@ -334,46 +369,60 @@ export const updateProfile = async (req, res) => {
 };
 
 export const changePassword = async (req, res) => {
-  const { oldPassword, newPassword, confirmPassword } = req.body;
+  try {
+    const { oldPassword, newPassword, confirmPassword } = req.body;
 
-  if (!oldPassword || !newPassword || !confirmPassword) {
-    return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin" });
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy tài khoản" });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({ message: "Mật khẩu cũ không đúng" });
+    }
+
+    if (oldPassword === newPassword) {
+      return res.status(400).json({
+        message: "Mật khẩu mới không được trùng mật khẩu cũ",
+      });
+    }
+
+    if (!validatePasswordPolicy(newPassword)) {
+      return res.status(400).json({ message: passwordPolicyMessage });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        message: "Mật khẩu xác nhận không khớp",
+      });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.json({ message: "Đổi mật khẩu thành công" });
+  } catch (error) {
+    console.error("Change password error:", error);
+    res.status(500).json({ message: "Lỗi server" });
   }
-
-  const user = await User.findById(req.user.id);
-  const isMatch = await bcrypt.compare(oldPassword, user.password);
-
-  if (!isMatch) {
-    return res.status(400).json({ message: "Mật khẩu cũ không đúng" });
-  }
-
-  if (oldPassword === newPassword) {
-    return res.status(400).json({
-      message: "Mật khẩu mới không được trùng mật khẩu cũ",
-    });
-  }
-
-  if (!validatePasswordPolicy(newPassword)) {
-    return res.status(400).json({ message: passwordPolicyMessage });
-  }
-
-  if (newPassword !== confirmPassword) {
-    return res.status(400).json({
-      message: "Mật khẩu xác nhận không khớp",
-    });
-  }
-
-  user.password = await bcrypt.hash(newPassword, 10);
-  await user.save();
-
-  res.json({ message: "Đổi mật khẩu thành công" });
 };
 
 export const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = normalizeEmail(email);
 
-    const admin = await User.findOne({ email: email?.trim().toLowerCase() });
+    if (!normalizedEmail || !password) {
+      return res.status(400).json({ message: "Vui lòng nhập email và mật khẩu" });
+    }
+
+    const admin = await User.findOne({ email: normalizedEmail });
 
     if (!admin || !["admin", "moderator"].includes(admin.role)) {
       return res.status(401).json({ message: "Không có quyền truy cập" });

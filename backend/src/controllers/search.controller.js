@@ -1,9 +1,8 @@
 import Drug from "../models/Drug.js";
 import Disease from "../models/Disease.js";
+import { createVietnameseSearchRegex } from "../utils/searchRegex.js";
 
 const MAX_SEARCH_LENGTH = 80;
-
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 export const searchAll = async (req, res) => {
   try {
@@ -19,7 +18,7 @@ export const searchAll = async (req, res) => {
       });
     }
 
-    const searchRegex = new RegExp(escapeRegex(q), "i");
+    const searchRegex = createVietnameseSearchRegex(q);
 
     const drugs = await Drug.find({
       $or: [

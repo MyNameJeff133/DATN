@@ -23,6 +23,14 @@ const toCommaSeparatedText = (value) => {
   return value || "";
 };
 
+const getListItems = (data) => {
+  if (Array.isArray(data?.items)) {
+    return data.items;
+  }
+
+  return Array.isArray(data) ? data : [];
+};
+
 export default function AdminDrugs() {
   const [drugs, setDrugs] = useState([]);
   const [search, setSearch] = useState("");
@@ -41,10 +49,11 @@ export default function AdminDrugs() {
 
   const fetchDrugs = async () => {
     try {
-      const res = await api.get("/drugs");
-      setDrugs(res.data);
+      const res = await api.get("/drugs", { params: { limit: 200 } });
+      setDrugs(getListItems(res.data));
     } catch (error) {
       console.error(error);
+      setDrugs([]);
     }
   };
 

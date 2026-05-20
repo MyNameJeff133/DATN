@@ -1,4 +1,5 @@
 import Disease from "../models/Disease.js";
+import { createVietnameseSearchRegex } from "../utils/searchRegex.js";
 
 const normalizeList = (value) => {
   if (Array.isArray(value)) {
@@ -20,7 +21,7 @@ const normalizeDiseasePayload = (payload) => ({
   name: payload.name?.trim(),
   description: payload.description?.trim?.() || "",
   image: payload.image?.trim?.() || "",
-  category: payload.category || "khác",
+  category: payload.category || "khac",
   symptoms: normalizeList(payload.symptoms),
   causes: payload.causes?.trim?.() || "",
   treatment: payload.treatment?.trim?.() || "",
@@ -38,20 +39,19 @@ export const createDisease = async (req, res) => {
   }
 };
 
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
 export const getAllDiseases = async (req, res) => {
   try {
     const q = String(req.query.q || "").trim();
     const category = req.query.category;
     const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(parseInt(req.query.limit) || 12, 200);
+    const requestedLimit = parseInt(req.query.limit, 10) || 12;
+    const limit = Math.min(Math.max(requestedLimit, 1), 200);
 
     const filter = {};
     if (category) filter.category = category;
 
     if (q) {
-      const regex = new RegExp(escapeRegex(q), "i");
+      const regex = createVietnameseSearchRegex(q);
       filter.$or = [
         { name: regex },
         { description: regex },
@@ -76,10 +76,10 @@ export const getAllDiseases = async (req, res) => {
 export const getDiseaseById = async (req, res) => {
   try {
     const disease = await Disease.findById(req.params.id);
-    if (!disease) return res.status(404).json({ message: "Not found" });
+    if (!disease) return res.status(404).json({ message: "Không tìm thấy bệnh" });
     res.json(disease);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: "Id bệnh không hợp lệ" });
   }
 };
 

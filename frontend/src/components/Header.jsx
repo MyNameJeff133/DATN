@@ -13,7 +13,6 @@ import {
 import api from "../services/api";
 import { clearAuthStorage, getStoredToken } from "../services/authStorage";
 import ThemeToggle from "../components/ThemeToggle";
-import normalizeText from "../utils/normalizeText";
 
 const navItems = [
   { path: "/diseases", label: "Bệnh lý" },
@@ -69,9 +68,9 @@ export default function Header() {
         return;
       }
 
-      const q = normalizeText(query);
+      const q = query.trim();
       api
-        .get(`/search?q=${encodeURIComponent(q)}`)
+        .get("/search", { params: { q } })
         .then((res) => setResults(res.data))
         .catch(() => setResults(null));
     }, 300);
@@ -116,7 +115,7 @@ export default function Header() {
 
   const handleSubmit = (event) => {
     if (event.key === "Enter" && query.trim()) {
-      const q = normalizeText(query);
+      const q = query.trim();
       navigate(`/search?q=${encodeURIComponent(q)}`);
       setResults(null);
       setOpenMobileNav(false);
