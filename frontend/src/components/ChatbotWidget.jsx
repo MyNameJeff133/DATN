@@ -36,7 +36,8 @@ export default function ChatbotWidget() {
           onClick={() => {
             setOpen(true);
           }}
-          className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700"
+          aria-label="Mở chatbot"
+          className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-900/25 transition hover:bg-blue-700 dark:bg-cyan-600 dark:hover:bg-cyan-500"
         >
           <MessageCircle size={24} />
         </button>
@@ -45,29 +46,39 @@ export default function ChatbotWidget() {
       {open && (
         <div
           ref={boxRef}
-          className={`fixed bottom-5 right-5 z-50 w-[calc(100vw-24px)] max-w-[380px] overflow-hidden rounded-xl border bg-white shadow-xl ${
+          className={`fixed bottom-5 right-5 z-50 w-[calc(100vw-24px)] max-w-[380px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20 dark:border-slate-700 dark:bg-slate-950 dark:shadow-black/40 ${
             minimized ? "h-16" : "h-[620px] max-h-[calc(100vh-40px)]"
           }`}
         >
-          <div className="flex items-center justify-between bg-blue-600 px-4 py-3 text-white">
+          <div className="flex items-center justify-between bg-blue-600 px-4 py-3 text-white dark:bg-cyan-700">
             <div>
               <p className="font-semibold">Chatbot sức khỏe</p>
               <p className="text-xs text-blue-100">Tra cứu nhanh thông tin cơ bản</p>
             </div>
 
             <div className="flex gap-2">
-              <button onClick={() => setMinimized(!minimized)}>
+              <button
+                type="button"
+                onClick={() => setMinimized(!minimized)}
+                aria-label={minimized ? "Mở rộng chatbot" : "Thu gọn chatbot"}
+                className="rounded-lg p-1 transition hover:bg-white/15"
+              >
                 <Minus size={16} />
               </button>
-              <button onClick={() => setOpen(false)}>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Đóng chatbot"
+                className="rounded-lg p-1 transition hover:bg-white/15"
+              >
                 <X size={16} />
               </button>
             </div>
           </div>
 
           {!minimized && (
-            <div className="h-[calc(100%-60px)] p-3">
-              <Chatbot />
+            <div className="h-[calc(100%-60px)] bg-slate-50 p-3 dark:bg-slate-950">
+              <Chatbot compact />
             </div>
           )}
         </div>
