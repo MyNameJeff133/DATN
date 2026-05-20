@@ -1,34 +1,59 @@
-import { Sun, Moon } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { toggleTheme, getStoredTheme } from '../services/theme';
+import { Monitor, Moon, Sun } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  getThemeState,
+  setThemePreference,
+  subscribeThemeChanges,
+  syncTheme,
+} from "../services/theme";
 
-export default function ThemeToggle() {
-  const [theme, setTheme] = useState(() => {
-    if (typeof document !== 'undefined') {
-      return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-    }
-    return 'light';
-  });
+const themeOptions = [
+  { value: "light", label: "Sáng", icon: Sun },
+  { value: "dark", label: "Tối", icon: Moon },
+  { value: "system", label: "Theo máy", icon: Monitor },
+];
+
+export default function ThemeToggle({ className = "" }) {
+  const [themeState, setThemeState] = useState(() => getThemeState());
 
   useEffect(() => {
-    const stored = getStoredTheme();
-    if (stored) setTheme(stored);
+    setThemeState(syncTheme());
+    return subscribeThemeChanges(setThemeState);
   }, []);
 
-  const handleToggle = () => {
-    const next = toggleTheme();
-    setTheme(next);
+  const handleChange = (themePreference) => {
+    setThemeState(setThemePreference(themePreference));
   };
 
   return (
-    <button
-      type="button"
-      onClick={handleToggle}
-      aria-label="Chuyển giao diện sáng/tối"
-      title="Chuyển giao diện sáng/tối"
-      className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:border-cyan-200 hover:text-cyan-700"
+    <div
+      className={`inline-flex h-11 items-center rounded-2xl border border-slate-200 bg-white/90 p-1 shadow-sm backdrop-blur transition dark:border-slate-700 dark:bg-slate-900/90 ${className}`}
+      role="group"
+      aria-label="Chọn giao diện"
+      title={`Giao diện hiện tại: ${themeState.effectiveTheme === "dark" ? "tối" : "sáng"}`}
     >
-      {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-    </button>
+      {themeOptions.map((option) => {
+        const Icon = option.icon;
+        const active = themeState.themePreference === option.value;
+
+        return (
+          <button
+            key={option.value}
+            type="button"
+            aria-label={`Giao diện ${option.label}`}
+            aria-pressed={active}
+            title={option.label}
+            onClick={() => handleChange(option.value)}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-xl text-sm transition ${
+              active
+                ? "bg-cyan-700 text-white shadow-sm"
+                : "text-slate-500 hover:bg-slate-100 hover:text-cyan-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-cyan-300"
+            }`}
+          >
+            <Icon size={17} />
+          </button>
+        );
+      })}
+    </div>
   );
 }

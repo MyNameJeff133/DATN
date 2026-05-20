@@ -315,6 +315,11 @@ export default function Header() {
               className="relative"
             />
 
+            <div className="mt-3 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <span className="text-sm font-bold text-slate-700">Giao diện</span>
+              <ThemeToggle />
+            </div>
+
             <nav className="mt-3 space-y-1">
               {navItems.map((item) => {
                 const isActive =

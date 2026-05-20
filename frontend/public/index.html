@@ -10,6 +10,20 @@
       content="Web site created using create-react-app"
     />
     <link rel="apple-touch-icon" href="logo.png" />
+    <script>
+      (function () {
+        try {
+          var preference = localStorage.getItem("theme") || "system";
+          if (["system", "light", "dark"].indexOf(preference) === -1) preference = "system";
+          var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var effectiveTheme = preference === "dark" || (preference === "system" && prefersDark) ? "dark" : "light";
+          document.documentElement.classList.toggle("dark", effectiveTheme === "dark");
+          document.documentElement.dataset.theme = effectiveTheme;
+          document.documentElement.dataset.themePreference = preference;
+          document.querySelector('meta[name="theme-color"]').setAttribute("content", effectiveTheme === "dark" ? "#08111f" : "#f6f9fc");
+        } catch (error) {}
+      })();
+    </script>
     <!--
       manifest.json provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/

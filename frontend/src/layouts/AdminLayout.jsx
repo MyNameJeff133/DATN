@@ -15,6 +15,7 @@ import { jwtDecode } from "jwt-decode";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { clearAuthStorage, getStoredToken } from "../services/authStorage";
+import ThemeToggle from "../components/ThemeToggle";
 
 const menuItems = [
   { path: "/admin/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
@@ -140,6 +141,10 @@ export default function AdminLayout() {
       </nav>
 
       <div className="border-t border-slate-200/80 p-4">
+        <div className="mb-3 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+          <span className="text-sm font-bold text-slate-700">Giao diện</span>
+          <ThemeToggle />
+        </div>
         <button onClick={handleLogout} className="up-btn-danger w-full">
           <LogOut size={18} />
           Đăng xuất
@@ -149,7 +154,7 @@ export default function AdminLayout() {
   );
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.12),transparent_32rem),linear-gradient(180deg,#f8fafc,#eef7fb)] text-slate-900">
+    <div className="min-h-screen text-slate-900">
       <div className="border-b border-slate-200/80 bg-white/90 px-4 py-3 shadow-sm backdrop-blur lg:hidden">
         <div className="flex items-center justify-between">
           <div>
