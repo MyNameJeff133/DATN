@@ -90,21 +90,21 @@ export default function Drugs() {
   const paginatedDrugs = drugs;
   const detailSections = [
     {
-      title: "Cong dung",
+      title: "Công dụng",
       content: selectedDrug?.usage,
     },
     {
-      title: "Lieu dung",
+      title: "Liều dùng",
       content: selectedDrug?.dosage,
     },
     {
-      title: "Tac dung phu",
+      title: "Tác dụng phụ",
       content: Array.isArray(selectedDrug?.sideEffects)
         ? selectedDrug.sideEffects.join(", ")
         : "",
     },
     {
-      title: "Chong chi dinh",
+      title: "Chống chỉ định",
       content: Array.isArray(selectedDrug?.contraindications)
         ? selectedDrug.contraindications.join(", ")
         : "",
@@ -125,17 +125,17 @@ export default function Drugs() {
 
     const token = getStoredToken();
     if (!token) {
-      setFeedbackMessage("Vui long dang nhap de gui gop y.");
+      setFeedbackMessage("Vui lòng đăng nhập để gửi góp ý.");
       return;
     }
 
     if (!feedbackTitle.trim() || !feedbackContent.trim()) {
-      setFeedbackMessage("Vui long nhap day du tieu de va noi dung.");
+      setFeedbackMessage("Vui lòng nhập đầy đủ tiêu đề và nội dung.");
       return;
     }
 
     if (feedbackContent.trim().length > CONTENT_FEEDBACK_MAX_LENGTH) {
-      setFeedbackMessage(`Noi dung gop y toi da ${CONTENT_FEEDBACK_MAX_LENGTH} ky tu.`);
+      setFeedbackMessage(`Nội dung góp ý tối đa ${CONTENT_FEEDBACK_MAX_LENGTH} ký tự.`);
       return;
     }
 

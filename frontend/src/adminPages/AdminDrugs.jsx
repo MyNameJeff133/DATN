@@ -157,7 +157,7 @@ export default function AdminDrugs() {
       fetchDrugs();
     } catch (error) {
       console.error("Drug submit error:", error);
-      alert(error.response?.data?.message || "Co loi xay ra khi luu thuoc.");
+      alert(error.response?.data?.message || "Có lỗi xảy ra khi lưu thuốc.");
     }
   };
 
@@ -200,14 +200,14 @@ export default function AdminDrugs() {
 
       {!isAdmin && (
         <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-          Ban co the sua thuoc hien co khi can xu ly gop y. Chi admin moi duoc them va xoa thuoc.
+          Bạn có thể sửa thuốc hiện có khi cần xử lý góp ý. Chỉ admin mới được thêm và xóa thuốc.
         </div>
       )}
 
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <input
           type="text"
-          placeholder="Tim kiem ten thuoc..."
+          placeholder="Tìm kiếm tên thuốc..."
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm md:max-w-md"
@@ -219,7 +219,7 @@ export default function AdminDrugs() {
             onChange={(event) => setFilterCategory(event.target.value)}
             className="rounded-lg border border-gray-300 px-4 py-3 text-sm"
           >
-            <option value="all">Tat ca danh muc</option>
+            <option value="all">Tất cả danh mục</option>
             {drugCategoryOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -280,7 +280,7 @@ export default function AdminDrugs() {
               {drug.usage && <p className="mt-3 line-clamp-2 text-sm text-gray-600">{drug.usage}</p>}
 
               <p className="mt-3 text-sm text-gray-600">
-                <strong>Lieu dung:</strong> {drug.dosage || "-"}
+                <strong>Liều dùng:</strong> {drug.dosage || "-"}
               </p>
 
               {drug.image ? (
@@ -290,10 +290,10 @@ export default function AdminDrugs() {
                   rel="noreferrer"
                   className="mt-4 inline-flex text-xs text-blue-600 underline"
                 >
-                  Xem link anh
+                  Xem link ảnh
                 </a>
               ) : (
-                <p className="mt-4 text-xs text-gray-400">Chua co anh</p>
+                <p className="mt-4 text-xs text-gray-400">Chưa có ảnh</p>
               )}
 
               {canEdit && (
@@ -329,7 +329,7 @@ export default function AdminDrugs() {
             <form onSubmit={handleSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
               <input
                 name="name"
-                placeholder="Ten thuoc"
+                placeholder="Tên thuốc"
                 value={formData.name}
                 onChange={handleChange}
                 required
@@ -351,7 +351,7 @@ export default function AdminDrugs() {
 
               <input
                 name="dosage"
-                placeholder="Lieu dung"
+                placeholder="Liều dùng"
                 value={formData.dosage}
                 onChange={handleChange}
                 className="rounded-lg border border-gray-300 px-4 py-3 text-sm"
@@ -360,7 +360,7 @@ export default function AdminDrugs() {
               <input
                 name="image"
                 type="url"
-                placeholder="Link hinh anh"
+                placeholder="Link hình ảnh"
                 value={formData.image}
                 onChange={handleChange}
                 className="rounded-lg border border-gray-300 px-4 py-3 text-sm md:col-span-2"
@@ -368,7 +368,7 @@ export default function AdminDrugs() {
 
               {formData.image && (
                 <div className="rounded-lg border border-dashed border-gray-300 p-4 md:col-span-2">
-                  <p className="mb-3 text-sm font-medium text-gray-700">Xem truoc anh</p>
+                  <p className="mb-3 text-sm font-medium text-gray-700">Xem trước ảnh</p>
 
                   {!imagePreviewError ? (
                     <img
@@ -389,7 +389,7 @@ export default function AdminDrugs() {
                     rel="noreferrer"
                     className="mt-3 inline-flex text-sm text-blue-600 underline"
                   >
-                    Mo link anh
+                    Mở link ảnh
                   </a>
 
                   <p className="mt-2 break-all text-xs text-gray-500">{formData.image}</p>
@@ -398,7 +398,7 @@ export default function AdminDrugs() {
 
               <textarea
                 name="usage"
-                placeholder="Cong dung"
+                placeholder="Công dụng"
                 value={formData.usage}
                 onChange={handleChange}
                 className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm md:col-span-2"
@@ -406,7 +406,7 @@ export default function AdminDrugs() {
 
               <textarea
                 name="contraindications"
-                placeholder="Chong chi dinh, cach nhau bang dau phay"
+                placeholder="Chống chỉ định, cách nhau bằng dấu phẩy"
                 value={formData.contraindications}
                 onChange={handleChange}
                 className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm md:col-span-2"
@@ -414,7 +414,7 @@ export default function AdminDrugs() {
 
               <textarea
                 name="sideEffects"
-                placeholder="Tac dung phu, cach nhau bang dau phay"
+                placeholder="Tác dụng phụ, cách nhau bằng dấu phẩy"
                 value={formData.sideEffects}
                 onChange={handleChange}
                 className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm md:col-span-2"
@@ -430,7 +430,7 @@ export default function AdminDrugs() {
                   }}
                   className="rounded border border-gray-300 px-4 py-2 text-sm text-gray-600"
                 >
-                  Huy
+                  Hủy
                 </button>
                 <button className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white">
                   {editingDrug ? "Cập nhật" : "Thêm thuốc"}

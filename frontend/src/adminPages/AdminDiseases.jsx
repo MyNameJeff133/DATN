@@ -160,7 +160,7 @@ export default function AdminDiseases() {
       fetchDiseases();
     } catch (error) {
       console.error(error);
-      alert("Co loi xay ra khi luu benh.");
+      alert("Có lỗi xảy ra khi lưu bệnh.");
     }
   };
 
@@ -203,14 +203,14 @@ export default function AdminDiseases() {
 
       {!isAdmin && (
         <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-          Ban co the sua benh hien co khi can xu ly gop y. Chi admin moi duoc them va xoa benh.
+          Bạn có thể sửa bệnh hiện có khi cần xử lý góp ý. Chỉ admin mới được thêm và xóa bệnh.
         </div>
       )}
 
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <input
           type="text"
-          placeholder="Tim kiem ten benh..."
+          placeholder="Tìm kiếm tên bệnh..."
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm md:max-w-md"
@@ -222,7 +222,7 @@ export default function AdminDiseases() {
             onChange={(event) => setFilterCategory(event.target.value)}
             className="rounded-lg border border-gray-300 px-4 py-3 text-sm"
           >
-            <option value="all">Tat ca nhom benh</option>
+            <option value="all">Tất cả nhóm bệnh</option>
             {diseaseCategoryOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -304,7 +304,7 @@ export default function AdminDiseases() {
                   className="mt-4 inline-flex text-xs text-blue-600 underline"
                   onClick={(event) => event.stopPropagation()}
                 >
-                  Xem link anh
+                  Xem link ảnh
                 </a>
               )}
 
@@ -341,7 +341,7 @@ export default function AdminDiseases() {
             <form onSubmit={handleSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
               <input
                 name="name"
-                placeholder="Ten benh"
+                placeholder="Tên bệnh"
                 value={formData.name}
                 onChange={handleChange}
                 required
@@ -384,7 +384,7 @@ export default function AdminDiseases() {
 
               {formData.image && (
                 <div className="rounded-lg border border-dashed border-gray-300 p-4 md:col-span-2">
-                  <p className="mb-3 text-sm font-medium text-gray-700">Xem truoc anh</p>
+                  <p className="mb-3 text-sm font-medium text-gray-700">Xem trước ảnh</p>
                   <img
                     src={formData.image}
                     alt={formData.name || "Disease preview"}
@@ -398,14 +398,14 @@ export default function AdminDiseases() {
                     rel="noreferrer"
                     className="mt-3 inline-flex text-sm text-blue-600 underline"
                   >
-                    Mo link anh
+                    Mở link ảnh
                   </a>
                 </div>
               )}
 
               <textarea
                 name="description"
-                placeholder="Mo ta"
+                placeholder="Mô tả"
                 value={formData.description}
                 onChange={handleChange}
                 className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm md:col-span-2"
@@ -413,7 +413,7 @@ export default function AdminDiseases() {
 
               <textarea
                 name="symptoms"
-                placeholder="Trieu chung, cach nhau boi dau phay"
+                placeholder="Triệu chứng, cách nhau bởi dấu phẩy"
                 value={formData.symptoms}
                 onChange={handleChange}
                 className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm md:col-span-2"
@@ -421,7 +421,7 @@ export default function AdminDiseases() {
 
               <textarea
                 name="causes"
-                placeholder="Nguyen nhan"
+                placeholder="Nguyên nhân"
                 value={formData.causes}
                 onChange={handleChange}
                 className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm"
@@ -429,7 +429,7 @@ export default function AdminDiseases() {
 
               <textarea
                 name="treatment"
-                placeholder="Dieu tri"
+                placeholder="Điều trị"
                 value={formData.treatment}
                 onChange={handleChange}
                 className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm"
@@ -437,7 +437,7 @@ export default function AdminDiseases() {
 
               <textarea
                 name="prevention"
-                placeholder="Phong ngua"
+                placeholder="Phòng ngừa"
                 value={formData.prevention}
                 onChange={handleChange}
                 className="min-h-28 rounded-lg border border-gray-300 px-4 py-3 text-sm md:col-span-2"
@@ -453,7 +453,7 @@ export default function AdminDiseases() {
                   }}
                   className="rounded border border-gray-300 px-4 py-2 text-sm text-gray-600"
                 >
-                  Huy
+                  Hủy
                 </button>
                 <button className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white">
                   {editingId ? "Cập nhật" : "Thêm"}

@@ -21,7 +21,7 @@ const authMiddleware = async (req, res, next) => {
   const token = getToken(req);
 
   if (!token) {
-    return res.status(401).json({ message: "Chua dang nhap" });
+    return res.status(401).json({ message: "Chưa đăng nhập" });
   }
 
   try {
@@ -29,17 +29,17 @@ const authMiddleware = async (req, res, next) => {
     const user = await hydrateRequestUser(decoded);
 
     if (!user) {
-      return res.status(401).json({ message: "Tai khoan khong ton tai" });
+      return res.status(401).json({ message: "Tài khoản không tồn tại" });
     }
 
     if (user.isBanned) {
-      return res.status(403).json({ message: "Tai khoan da bi khoa" });
+      return res.status(403).json({ message: "Tài khoản đã bị khóa" });
     }
 
     req.user = user;
     next();
   } catch {
-    res.status(401).json({ message: "Token khong hop le" });
+    res.status(401).json({ message: "Token không hợp lệ" });
   }
 };
 
@@ -66,11 +66,11 @@ export const optionalAuth = async (req, res, next) => {
 
 export const requireRoles = (...roles) => (req, res, next) => {
   if (!req.user) {
-    return res.status(401).json({ message: "Chua dang nhap" });
+    return res.status(401).json({ message: "Chưa đăng nhập" });
   }
 
   if (!roles.includes(req.user.role)) {
-    return res.status(403).json({ message: "Khong du quyen" });
+    return res.status(403).json({ message: "Không đủ quyền" });
   }
 
   next();
