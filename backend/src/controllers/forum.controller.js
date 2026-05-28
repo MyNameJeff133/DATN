@@ -4,6 +4,19 @@ import User from "../models/User.js";
 import { notifyUser } from "../utils/notifyUser.js";
 
 const POST_REPORT_MAX_LENGTH = 300;
+const MAX_FORUM_PAGE_SIZE = 10;
+
+const getForumSortStage = (sort) => {
+  if (sort === "old") {
+    return { createdAt: 1, _id: 1 };
+  }
+
+  if (sort === "featured") {
+    return { views: -1, likeCount: -1, createdAt: -1, _id: -1 };
+  }
+
+  return { createdAt: -1, _id: -1 };
+};
 
 const attachCommentCounts = async (posts) => {
   const validPosts = posts.filter(Boolean);
@@ -75,15 +88,47 @@ export const createPost = async (req, res) => {
 
 export const getPosts = async (req, res) => {
   try {
-    const posts = await ForumPost.find({
+    const sort = ["new", "old", "featured"].includes(req.query.sort)
+      ? req.query.sort
+      : "new";
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const requestedLimit = parseInt(req.query.limit, 10) || MAX_FORUM_PAGE_SIZE;
+    const limit = Math.min(Math.max(requestedLimit, 1), MAX_FORUM_PAGE_SIZE);
+    const skip = (page - 1) * limit;
+    const filter = {
       status: { $ne: "hidden" },
-    })
-      .populate("author", "name")
-      .sort({ createdAt: -1 });
+    };
 
-    const postsWithCounts = await attachCommentCounts(posts);
+    const [total, posts] = await Promise.all([
+      ForumPost.countDocuments(filter),
+      ForumPost.aggregate([
+        { $match: filter },
+        {
+          $addFields: {
+            likeCount: { $size: { $ifNull: ["$likes", []] } },
+          },
+        },
+        { $sort: getForumSortStage(sort) },
+        { $skip: skip },
+        { $limit: limit },
+      ]),
+    ]);
 
-    res.json(postsWithCounts);
+    const populatedPosts = await ForumPost.populate(posts, {
+      path: "author",
+      select: "name",
+    });
+
+    const postsWithCounts = await attachCommentCounts(populatedPosts);
+
+    res.json({
+      items: postsWithCounts,
+      total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+      sort,
+    });
   } catch (error) {
     console.error("Get posts error:", error);
     res.status(500).json({ message: "Lỗi server" });
