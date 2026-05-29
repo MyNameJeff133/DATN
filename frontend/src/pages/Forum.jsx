@@ -304,7 +304,7 @@ export default function Forum() {
                     </div>
 
                     <div className="shrink-0">
-                      <span className="inline-flex rounded-full bg-cyan-50 px-4 py-2 text-sm font-bold text-cyan-700">
+                      <span className="inline-flex items-center whitespace-nowrap rounded-full bg-cyan-50 px-4 py-2 text-sm font-bold text-cyan-700">
                         Xem chi tiết
                       </span>
                     </div>
@@ -387,7 +387,7 @@ function MetaPill({ icon, tone = "slate", children }) {
   }[tone];
 
   return (
-    <span className={`inline-flex items-center gap-2 rounded-full px-4 py-2 ${toneClass}`}>
+    <span className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 ${toneClass}`}>
       {icon}
       {children}
     </span>

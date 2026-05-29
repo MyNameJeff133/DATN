@@ -162,7 +162,7 @@ export default function Header() {
             {openMobileNav ? <X size={19} /> : <Menu size={19} />}
           </button>
 
-          <Link to="/" className="min-w-fit">
+          <Link to="/" className="min-w-fit shrink-0">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-900/10">
                 <HeartPulse size={21} />
@@ -178,7 +178,7 @@ export default function Header() {
             </div>
           </Link>
 
-          <nav className="ml-4 hidden items-center gap-1 lg:flex">
+          <nav className="ml-4 hidden shrink-0 items-center gap-1 whitespace-nowrap lg:flex">
             {navItems.map((item) => {
               const isActive =
                 location.pathname === item.path ||
@@ -188,7 +188,7 @@ export default function Header() {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`rounded-2xl px-4 py-2.5 text-sm font-bold transition ${
+                  className={`inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-2xl px-4 py-2.5 text-sm font-bold transition ${
                     isActive
                       ? "bg-cyan-50 text-cyan-700"
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
@@ -206,15 +206,15 @@ export default function Header() {
             setQuery={setQuery}
             results={results}
             onKeyDown={handleSubmit}
-            className="relative ml-auto hidden w-full max-w-md md:block"
+            className="relative ml-auto hidden min-w-0 flex-1 md:block lg:max-w-xs xl:max-w-md"
           />
 
-          <div className="ml-3 hidden md:flex">
+          <div className="ml-3 hidden shrink-0 md:flex">
             <ThemeToggle />
           </div>
 
           {!token && (
-            <div className="hidden items-center gap-2 md:flex">
+            <div className="hidden shrink-0 items-center gap-2 md:flex">
               <Link to="/login" className="up-btn-secondary px-4 py-2.5">
                 Đăng nhập
               </Link>

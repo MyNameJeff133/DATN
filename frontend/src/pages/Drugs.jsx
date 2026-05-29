@@ -241,7 +241,7 @@ export default function Drugs() {
                   {getCategoryLabel(drugCategoryOptions, drug.category)}
                 </span>
                 <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">{drug.usage}</p>
-                <div className="mt-4 text-sm font-bold text-cyan-700">Xem chi tiết</div>
+                <div className="mt-4 inline-flex whitespace-nowrap text-sm font-bold text-cyan-700">Xem chi tiết</div>
               </div>
             </button>
           ))

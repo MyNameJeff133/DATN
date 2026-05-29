@@ -250,7 +250,7 @@ export default function Diseases() {
                     {Array.isArray(disease.symptoms) ? disease.symptoms.join(", ") : ""}
                   </p>
 
-                  <div className="mt-4 text-sm font-medium text-blue-700">Xem chi tiết</div>
+                  <div className="mt-4 inline-flex whitespace-nowrap text-sm font-medium text-blue-700">Xem chi tiết</div>
                 </div>
               </button>
             ))
