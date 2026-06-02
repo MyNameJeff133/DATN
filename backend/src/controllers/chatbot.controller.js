@@ -183,6 +183,69 @@ const findRelatedDrugsForDisease = (disease, drugs) => {
 const detectIntent = (normalizedMessage, intents) =>
   intents.find((intent) => includesAny(normalizedMessage, intent.keywords)) || null;
 
+const parseSelectionNumber = (message) => {
+  const normalizedMessage = normalizeText(message);
+  const match = normalizedMessage.match(/^(?:(?:so|chon|muc|lua chon)\s*)?(?:so\s*)?(\d{1,2})$/);
+
+  return match ? Number(match[1]) : null;
+};
+
+const getLatestMessageBySender = (messages = [], sender) =>
+  [...messages].reverse().find((message) => message?.sender === sender && message?.text);
+
+const parseClarificationMessage = (message) => {
+  if (!message?.text) return null;
+
+  const normalizedBotText = normalizeText(message.text);
+  let type = null;
+
+  if (normalizedBotText.includes("nhieu thuoc")) {
+    type = "drug";
+  } else if (normalizedBotText.includes("nhieu benh")) {
+    type = "disease";
+  }
+
+  if (!type) return null;
+
+  const options = String(message.text)
+    .split(/\r?\n/)
+    .map((line) => line.match(/^\s*(\d{1,2})\.\s+(.+?)\s*$/))
+    .filter(Boolean)
+    .map((match) => ({
+      number: Number(match[1]),
+      name: match[2].trim(),
+    }));
+
+  return options.length > 0 ? { type, options } : null;
+};
+
+const getLatestClarificationContext = (messages = []) => {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message?.sender !== "bot") continue;
+
+    const clarification = parseClarificationMessage(message);
+    if (!clarification) continue;
+
+    const previousUserMessage = getLatestMessageBySender(
+      messages.slice(0, index),
+      "user",
+    );
+
+    return {
+      ...clarification,
+      previousUserText: previousUserMessage?.text || "",
+    };
+  }
+
+  return null;
+};
+
+const findByDisplayedName = (items, displayedName) => {
+  const normalizedDisplayedName = normalizeText(displayedName);
+  return items.find((item) => normalizeText(item.name) === normalizedDisplayedName) || null;
+};
+
 const entityStopWords = new Set([
   "anh",
   "ban",
@@ -390,7 +453,7 @@ const buildClarificationReply = (typeLabel, candidates, originalMessage) => {
   const remainingText =
     remainingCount > 0 ? `\n... và ${remainingCount} kết quả khác.` : "";
 
-  return `Mình tìm thấy nhiều ${typeLabel} phù hợp với "${originalMessage}". Bạn muốn tra cứu thông tin nào?\n\n${candidateList}${remainingText}\n\nBạn có thể nhập đúng tên trong danh sách để mình tra cứu chính xác hơn.`;
+  return `Mình tìm thấy nhiều ${typeLabel} phù hợp với "${originalMessage}". Bạn muốn tra cứu thông tin nào?\n\n${candidateList}${remainingText}\n\nBạn có thể nhập số thứ tự (ví dụ: 1) hoặc nhập đúng tên trong danh sách để mình tra cứu chính xác hơn.`;
 };
 
 const shouldAskClarification = (candidates) => {
@@ -400,12 +463,55 @@ const shouldAskClarification = (candidates) => {
   return bestCandidate.score < 90 || bestCandidate.score === secondCandidate.score;
 };
 
-const buildReplyFromDatabase = async (message) => {
+const buildReplyFromDatabase = async (message, previousMessages = []) => {
   const normalized = normalizeText(message);
+  const selectionNumber = parseSelectionNumber(message);
+  const clarificationContext =
+    selectionNumber !== null ? getLatestClarificationContext(previousMessages) : null;
   const [diseases, drugs] = await Promise.all([
     Disease.find().lean(),
     Drug.find().lean(),
   ]);
+
+  if (selectionNumber !== null) {
+    if (!clarificationContext) {
+      return "Bạn hãy nhập số sau khi mình gửi danh sách lựa chọn. Bạn cũng có thể nhập tên bệnh, tên thuốc hoặc mô tả triệu chứng cần tra cứu.";
+    }
+
+    const selectedOption = clarificationContext.options.find(
+      (option) => option.number === selectionNumber,
+    );
+
+    if (!selectedOption) {
+      return `Mình không thấy lựa chọn số ${selectionNumber} trong danh sách gần nhất. Bạn vui lòng nhập lại số đang có trong danh sách.`;
+    }
+
+    const previousNormalizedMessage = normalizeText(clarificationContext.previousUserText);
+
+    if (clarificationContext.type === "disease") {
+      const selectedDisease = findByDisplayedName(diseases, selectedOption.name);
+
+      if (!selectedDisease) {
+        return "Mình chưa tìm lại được bệnh đã chọn. Bạn vui lòng nhập lại tên bệnh hoặc mô tả triệu chứng.";
+      }
+
+      const previousDiseaseIntent = detectIntent(previousNormalizedMessage, diseaseFieldIntents);
+      return previousDiseaseIntent
+        ? buildFocusedDiseaseReply(selectedDisease, previousDiseaseIntent)
+        : buildDiseaseReply(selectedDisease, drugs);
+    }
+
+    const selectedDrug = findByDisplayedName(drugs, selectedOption.name);
+
+    if (!selectedDrug) {
+      return "Mình chưa tìm lại được thuốc đã chọn. Bạn vui lòng nhập lại tên thuốc.";
+    }
+
+    const previousDrugIntent = detectIntent(previousNormalizedMessage, drugFieldIntents);
+    return previousDrugIntent
+      ? buildFocusedDrugReply(selectedDrug, previousDrugIntent)
+      : buildDrugReply(selectedDrug);
+  }
 
   const diseaseIntent = detectIntent(normalized, diseaseFieldIntents);
   const drugIntent = detectIntent(normalized, drugFieldIntents);
@@ -510,9 +616,12 @@ export const handleChat = async (req, res) => {
       });
     }
 
-    const reply = await buildReplyFromDatabase(message);
+    const previousMessages = normalizeMessages(
+      Array.isArray(req.body?.messages) ? req.body.messages : [],
+    );
+    const reply = await buildReplyFromDatabase(message, previousMessages);
     const messages = normalizeMessages([
-      ...(Array.isArray(req.body?.messages) ? req.body.messages : []),
+      ...previousMessages,
       { sender: "user", text: message, createdAt: new Date() },
       { sender: "bot", text: reply, createdAt: new Date() },
     ]);
