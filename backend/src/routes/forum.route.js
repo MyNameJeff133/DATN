@@ -5,6 +5,8 @@ import {
   createPost,
   getPosts,
   getPostById,
+  updatePost,
+  deletePost,
   likePost,
   dislikePost,
   reportPost,
@@ -22,6 +24,8 @@ router.post("/", auth, createPost);
 router.get("/", getPosts);
 router.get("/me/posts", auth, getMyPosts);
 router.get("/:id", getPostById);
+router.put("/:id", auth, updatePost);
+router.delete("/:id", auth, deletePost);
 
 router.post("/:id/like", auth, likePost);
 router.post("/:id/dislike", auth, dislikePost);

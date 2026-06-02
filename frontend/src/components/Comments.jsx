@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { Pencil, Trash2, X } from "lucide-react";
 import api from "../services/api";
+import { getStoredUser } from "../services/authStorage";
 
 const COMMENT_MAX_LENGTH = 500;
+
+const getAuthorId = (author) => author?._id || author?.id || author || "";
 
 function buildCommentTree(comments, parentId = null) {
   return comments
@@ -12,27 +16,109 @@ function buildCommentTree(comments, parentId = null) {
     }));
 }
 
-function CommentItem({ comment, level, onReply }) {
+function CommentItem({
+  comment,
+  level,
+  onReply,
+  currentUser,
+  editingCommentId,
+  editContent,
+  setEditContent,
+  onEditStart,
+  onEditCancel,
+  onEditSave,
+  onDelete,
+  actionLoadingId,
+}) {
   const nested = level > 0;
   const nestedClass = nested ? "mt-3 border-l-2 border-cyan-100 pl-3 sm:pl-4" : "";
+  const isOwner =
+    currentUser && String(getAuthorId(comment.author)) === String(currentUser.id || currentUser._id);
+  const isEditing = editingCommentId === comment._id;
+  const isSaving = actionLoadingId === `edit-${comment._id}`;
+  const isDeleting = actionLoadingId === `delete-${comment._id}`;
 
   return (
     <div className={`min-w-0 ${nestedClass}`}>
       <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="min-w-0">
           <p className="font-bold text-slate-950">{comment.author?.name || "Người dùng"}</p>
-          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">
-            {comment.content}
-          </p>
+
+          {isEditing ? (
+            <div className="mt-3">
+              <textarea
+                value={editContent}
+                onChange={(event) => setEditContent(event.target.value)}
+                maxLength={COMMENT_MAX_LENGTH}
+                className="up-field min-h-24"
+              />
+              <div className="mt-2 text-right text-xs text-slate-500">
+                {editContent.length}/{COMMENT_MAX_LENGTH} ký tự
+              </div>
+            </div>
+          ) : (
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">
+              {comment.content}
+            </p>
+          )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => onReply(comment)}
-          className="mt-3 text-sm font-bold text-cyan-700 transition hover:text-cyan-800"
-        >
-          Trả lời
-        </button>
+        <div className="mt-3 flex flex-wrap gap-3">
+          {isEditing ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onEditSave(comment._id)}
+                disabled={isSaving}
+                className="up-btn-primary px-4 py-2"
+              >
+                <Pencil size={15} />
+                {isSaving ? "Đang lưu..." : "Lưu"}
+              </button>
+              <button
+                type="button"
+                onClick={onEditCancel}
+                disabled={isSaving}
+                className="up-btn-secondary px-4 py-2"
+              >
+                <X size={15} />
+                Hủy
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => onReply(comment)}
+                className="text-sm font-bold text-cyan-700 transition hover:text-cyan-800"
+              >
+                Trả lời
+              </button>
+
+              {isOwner && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onEditStart(comment)}
+                    className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-600 transition hover:text-cyan-700"
+                  >
+                    <Pencil size={15} />
+                    Sửa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDelete(comment)}
+                    disabled={isDeleting}
+                    className="inline-flex items-center gap-1.5 text-sm font-bold text-red-600 transition hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Trash2 size={15} />
+                    {isDeleting ? "Đang xóa..." : "Xóa"}
+                  </button>
+                </>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {comment.replies?.length > 0 && (
@@ -43,6 +129,15 @@ function CommentItem({ comment, level, onReply }) {
               comment={reply}
               level={Math.min(level + 1, 6)}
               onReply={onReply}
+              currentUser={currentUser}
+              editingCommentId={editingCommentId}
+              editContent={editContent}
+              setEditContent={setEditContent}
+              onEditStart={onEditStart}
+              onEditCancel={onEditCancel}
+              onEditSave={onEditSave}
+              onDelete={onDelete}
+              actionLoadingId={actionLoadingId}
             />
           ))}
         </div>
@@ -55,6 +150,10 @@ export default function Comments({ postId, onCountChange }) {
   const [comments, setComments] = useState([]);
   const [content, setContent] = useState("");
   const [replyTo, setReplyTo] = useState(null);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editContent, setEditContent] = useState("");
+  const [actionLoadingId, setActionLoadingId] = useState("");
+  const [currentUser] = useState(() => getStoredUser());
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -81,6 +180,14 @@ export default function Comments({ postId, onCountChange }) {
 
   const commentTree = useMemo(() => buildCommentTree(comments), [comments]);
 
+  const updateCommentList = (updater) => {
+    setComments((prev) => {
+      const nextComments = typeof updater === "function" ? updater(prev) : updater;
+      onCountChange?.(nextComments.length);
+      return nextComments;
+    });
+  };
+
   const handleSubmit = async () => {
     if (!content.trim()) {
       setError("Vui lòng nhập nội dung bình luận");
@@ -102,17 +209,90 @@ export default function Comments({ postId, onCountChange }) {
         parentComment: replyTo?._id || null,
       });
 
-      setComments((prev) => {
-        const nextComments = [...prev, res.data];
-        onCountChange?.(nextComments.length);
-        return nextComments;
-      });
+      updateCommentList((prev) => [...prev, res.data]);
       setContent("");
       setReplyTo(null);
     } catch (submitError) {
       setError(submitError.response?.data?.message || "Không gửi được bình luận");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEditStart = (comment) => {
+    setReplyTo(null);
+    setEditingCommentId(comment._id);
+    setEditContent(comment.content || "");
+    setError("");
+  };
+
+  const handleEditCancel = () => {
+    setEditingCommentId(null);
+    setEditContent("");
+    setError("");
+  };
+
+  const handleEditSave = async (commentId) => {
+    if (!editContent.trim()) {
+      setError("Vui lòng nhập nội dung bình luận");
+      return;
+    }
+
+    if (editContent.trim().length > COMMENT_MAX_LENGTH) {
+      setError(`Nội dung bình luận tối đa ${COMMENT_MAX_LENGTH} ký tự`);
+      return;
+    }
+
+    try {
+      setActionLoadingId(`edit-${commentId}`);
+      setError("");
+
+      const res = await api.put(`/comments/${commentId}`, {
+        content: editContent.trim(),
+      });
+
+      updateCommentList((prev) =>
+        prev.map((comment) => (comment._id === commentId ? res.data : comment)),
+      );
+      setEditingCommentId(null);
+      setEditContent("");
+    } catch (saveError) {
+      setError(saveError.response?.data?.message || "Không thể cập nhật bình luận");
+    } finally {
+      setActionLoadingId("");
+    }
+  };
+
+  const handleDelete = async (comment) => {
+    if (!window.confirm("Bạn chắc chắn muốn xóa bình luận này? Các phản hồi bên trong cũng sẽ bị xóa.")) {
+      return;
+    }
+
+    try {
+      setActionLoadingId(`delete-${comment._id}`);
+      setError("");
+
+      const res = await api.delete(`/comments/${comment._id}`);
+      const deletedCommentIds = Array.isArray(res.data?.deletedCommentIds)
+        ? res.data.deletedCommentIds.map(String)
+        : [String(comment._id)];
+
+      updateCommentList((prev) =>
+        prev.filter((item) => !deletedCommentIds.includes(String(item._id))),
+      );
+
+      if (replyTo && deletedCommentIds.includes(String(replyTo._id))) {
+        setReplyTo(null);
+      }
+
+      if (editingCommentId && deletedCommentIds.includes(String(editingCommentId))) {
+        setEditingCommentId(null);
+        setEditContent("");
+      }
+    } catch (deleteError) {
+      setError(deleteError.response?.data?.message || "Không thể xóa bình luận");
+    } finally {
+      setActionLoadingId("");
     }
   };
 
@@ -178,7 +358,21 @@ export default function Comments({ postId, onCountChange }) {
             <StateBox dashed>Chưa có bình luận nào. Hãy là người đầu tiên tham gia trao đổi.</StateBox>
           ) : (
             commentTree.map((comment) => (
-              <CommentItem key={comment._id} comment={comment} level={0} onReply={setReplyTo} />
+              <CommentItem
+                key={comment._id}
+                comment={comment}
+                level={0}
+                onReply={setReplyTo}
+                currentUser={currentUser}
+                editingCommentId={editingCommentId}
+                editContent={editContent}
+                setEditContent={setEditContent}
+                onEditStart={handleEditStart}
+                onEditCancel={handleEditCancel}
+                onEditSave={handleEditSave}
+                onDelete={handleDelete}
+                actionLoadingId={actionLoadingId}
+              />
             ))
           )}
         </div>

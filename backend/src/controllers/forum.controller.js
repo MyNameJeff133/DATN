@@ -6,6 +6,8 @@ import { notifyUser } from "../utils/notifyUser.js";
 const POST_REPORT_MAX_LENGTH = 300;
 const MAX_FORUM_PAGE_SIZE = 10;
 
+const isSameId = (left, right) => String(left || "") === String(right || "");
+
 const getForumSortStage = (sort) => {
   if (sort === "old") {
     return { createdAt: 1, _id: 1 };
@@ -167,6 +169,69 @@ export const getPostById = async (req, res) => {
   } catch (error) {
     console.error("Get post by id error:", error);
     res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+export const updatePost = async (req, res) => {
+  try {
+    const { title, content, tags } = req.body;
+
+    if (!title?.trim() || !content?.trim()) {
+      return res.status(400).json({ message: "Vui lòng nhập tiêu đề và nội dung" });
+    }
+
+    const post = await ForumPost.findById(req.params.id);
+
+    if (!post || post.status === "hidden") {
+      return res.status(404).json({ message: "Không tìm thấy bài viết" });
+    }
+
+    if (!isSameId(post.author, req.user.id)) {
+      return res.status(403).json({ message: "Bạn không có quyền sửa bài viết này" });
+    }
+
+    post.title = title.trim();
+    post.content = content.trim();
+
+    if (Array.isArray(tags)) {
+      post.tags = tags
+        .map((tag) => (typeof tag === "string" ? tag.trim() : ""))
+        .filter(Boolean);
+    }
+
+    await post.save();
+    await post.populate("author", "name");
+
+    const postWithCount = await enrichSinglePost(post);
+    res.json(postWithCount);
+  } catch (error) {
+    console.error("Update post error:", error);
+    res.status(500).json({ message: "Không thể cập nhật bài viết" });
+  }
+};
+
+export const deletePost = async (req, res) => {
+  try {
+    const post = await ForumPost.findById(req.params.id);
+
+    if (!post || post.status === "hidden") {
+      return res.status(404).json({ message: "Không tìm thấy bài viết" });
+    }
+
+    if (!isSameId(post.author, req.user.id)) {
+      return res.status(403).json({ message: "Bạn không có quyền xóa bài viết này" });
+    }
+
+    await Comment.deleteMany({ post: post._id });
+    await ForumPost.findByIdAndDelete(post._id);
+
+    res.json({
+      message: "Đã xóa bài viết",
+      deletedPostId: post._id,
+    });
+  } catch (error) {
+    console.error("Delete post error:", error);
+    res.status(500).json({ message: "Không thể xóa bài viết" });
   }
 };
 
