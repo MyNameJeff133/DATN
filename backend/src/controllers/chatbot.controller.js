@@ -111,6 +111,15 @@ const diseaseFieldIntents = [
 
 const drugFieldIntents = [
   {
+    field: "sideEffects",
+    label: "Tác dụng phụ",
+    keywords: ["tác dụng phụ", "phản ứng phụ", "tác hại", "tác dụng không mong muốn"],
+    format: (drug) =>
+      Array.isArray(drug.sideEffects) && drug.sideEffects.length > 0
+        ? drug.sideEffects.join(", ")
+        : EMPTY_VALUE,
+  },
+  {
     field: "usage",
     label: "Công dụng",
     keywords: ["công dụng", "tác dụng", "dùng để làm gì", "trị gì", "điều trị gì"],
@@ -121,15 +130,6 @@ const drugFieldIntents = [
     label: "Liều dùng",
     keywords: ["liều dùng", "cách dùng", "uống bao nhiêu", "dùng bao nhiêu", "sử dụng thế nào"],
     format: (drug) => drug.dosage || EMPTY_VALUE,
-  },
-  {
-    field: "sideEffects",
-    label: "Tác dụng phụ",
-    keywords: ["tác dụng phụ", "phản ứng phụ", "tác hại", "tác dụng không mong muốn"],
-    format: (drug) =>
-      Array.isArray(drug.sideEffects) && drug.sideEffects.length > 0
-        ? drug.sideEffects.join(", ")
-        : EMPTY_VALUE,
   },
   {
     field: "contraindications",
@@ -275,6 +275,80 @@ const entityStopWords = new Set([
 const getTokens = (normalizedMessage) =>
   normalizedMessage.split(" ").filter(Boolean);
 
+const medicationRequestKeywords = [
+  "thuoc tri",
+  "thuoc chua",
+  "thuoc dieu tri",
+  "thuoc giam",
+  "thuoc ha",
+  "thuoc nao",
+  "dung thuoc",
+  "uong thuoc",
+  "nen dung thuoc",
+  "can thuoc",
+  "tim thuoc",
+  "loai thuoc",
+];
+
+const medicationQueryStopWords = new Set([
+  "anh",
+  "ban",
+  "benh",
+  "bi",
+  "can",
+  "cho",
+  "chua",
+  "co",
+  "cong",
+  "cua",
+  "de",
+  "dieu",
+  "dung",
+  "duoc",
+  "gi",
+  "giam",
+  "ha",
+  "hoi",
+  "khong",
+  "la",
+  "lam",
+  "loai",
+  "minh",
+  "nao",
+  "nen",
+  "nay",
+  "tac",
+  "thong",
+  "thuoc",
+  "tim",
+  "tin",
+  "toi",
+  "tra",
+  "tri",
+  "trieu",
+  "uong",
+  "ve",
+  "xin",
+]);
+
+const isMedicationRequest = (normalizedMessage) => {
+  if (!normalizedMessage.includes("thuoc")) return false;
+
+  if (includesAny(normalizedMessage, medicationRequestKeywords)) {
+    return true;
+  }
+
+  const tokens = getTokens(normalizedMessage);
+  return tokens[0] === "thuoc" && tokens.length > 1;
+};
+
+const getMedicationQueryTokens = (normalizedMessage) =>
+  [...new Set(
+    getTokens(normalizedMessage).filter(
+      (token) => token.length >= 2 && !medicationQueryStopWords.has(token),
+    ),
+  )];
+
 const getEntityTokens = (normalizedMessage) =>
   getTokens(normalizedMessage).filter(
     (token) => token.length >= 2 && !entityStopWords.has(token),
@@ -373,6 +447,58 @@ const findDrugCandidates = (normalizedMessage, drugs) => {
     if (matchedTokens.length > 0) {
       addCandidate(candidateMap, drug, 50 + matchedTokens.length);
     }
+  });
+
+  return getUniqueSortedCandidates(candidateMap);
+};
+
+const findMedicationDrugCandidates = (normalizedMessage, drugs, diseases) => {
+  const queryTokens = getMedicationQueryTokens(normalizedMessage);
+  const queryText = queryTokens.join(" ");
+
+  if (queryTokens.length === 0) {
+    return [];
+  }
+
+  const candidateMap = new Map();
+
+  drugs.forEach((drug) => {
+    const normalizedName = normalizeText(drug.name);
+    const normalizedUsage = normalizeText(drug.usage);
+    const normalizedCategory = normalizeText(drug.category);
+    const searchableText = [normalizedName, normalizedUsage, normalizedCategory]
+      .filter(Boolean)
+      .join(" ");
+
+    let score = 0;
+
+    if (queryText && normalizedUsage.includes(queryText)) {
+      score = 95;
+    } else if (queryText && normalizedName.includes(queryText)) {
+      score = 88;
+    } else if (queryText && normalizedCategory.includes(queryText)) {
+      score = 82;
+    } else if (queryTokens.length > 1 && queryTokens.every((token) => normalizedUsage.includes(token))) {
+      score = 80;
+    } else {
+      const matchedTokens = queryTokens.filter((token) => searchableText.includes(token));
+
+      if (matchedTokens.length > 0) {
+        score = 55 + matchedTokens.length * 10;
+      }
+    }
+
+    if (score > 0) {
+      addCandidate(candidateMap, drug, score);
+    }
+  });
+
+  const diseaseCandidates = findDiseaseCandidates(queryText || normalizedMessage, diseases);
+
+  diseaseCandidates.slice(0, 3).forEach((candidate) => {
+    findRelatedDrugsForDisease(candidate.item, drugs).forEach((drug) => {
+      addCandidate(candidateMap, drug, Math.max(60, candidate.score - 5));
+    });
   });
 
   return getUniqueSortedCandidates(candidateMap);
@@ -519,6 +645,22 @@ const buildReplyFromDatabase = async (message, previousMessages = []) => {
   const drugCandidates = findDrugCandidates(normalized, drugs);
   const diseaseMatch = diseaseCandidates[0]?.item || null;
   const drugMatch = drugCandidates[0]?.item || null;
+
+  // Ưu tiên xử lý câu hỏi dạng "thuốc trị ...", "thuốc nào chữa ..."
+  if (isMedicationRequest(normalized)) {
+    const medicationCandidates = findMedicationDrugCandidates(normalized, drugs, diseases);
+
+    if (medicationCandidates.length === 0) {
+      return "Mình chưa tìm thấy thuốc phù hợp. Bạn có thể mô tả rõ hơn triệu chứng hoặc tên bệnh giúp mình nhé.";
+    }
+
+    if (shouldAskClarification(medicationCandidates)) {
+      return buildClarificationReply("thuốc", medicationCandidates, message);
+    }
+
+    const topDrug = medicationCandidates[0].item;
+    return drugIntent ? buildFocusedDrugReply(topDrug, drugIntent) : buildDrugReply(topDrug);
+  }
 
   if (drugIntent && shouldAskClarification(drugCandidates)) {
     return buildClarificationReply("thuốc", drugCandidates, message);
