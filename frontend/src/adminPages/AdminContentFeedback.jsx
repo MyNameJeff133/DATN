@@ -6,7 +6,6 @@ import api from "../services/api";
 const statusOptions = [
   { value: "pending", label: "Chờ xử lý" },
   { value: "corrected", label: "Đã sửa" },
-  { value: "ignored", label: "Đã bỏ qua" },
   { value: "all", label: "Tất cả" },
 ];
 
@@ -47,7 +46,7 @@ export default function AdminContentFeedback() {
       const res = await api.patch(`/content-feedback/${feedback._id}/review`, { action });
 
       if (action === "ignored") {
-        // Le feedback est supprimé côté serveur : on le retire de la liste
+        // Nếu bỏ qua, xóa góp ý khỏi danh sách
         setFeedbacks((prev) => prev.filter((item) => item._id !== res.data.deletedId));
       } else {
         setFeedbacks((prev) =>
@@ -153,6 +152,15 @@ export default function AdminContentFeedback() {
                   >
                     <ExternalLink size={16} />
                     Đi tới trang chỉnh sửa
+                  </button>
+
+                  <button
+                    onClick={() => handleReview(feedback, "ignored")}
+                    disabled={actionLoadingId === `${feedback._id}-ignored`}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-rose-300"
+                  >
+                    <XCircle size={16} />
+                    {actionLoadingId === `${feedback._id}-ignored` ? "Đang xử lý..." : "Bỏ qua góp ý"}
                   </button>
                 </div>
               </div>
