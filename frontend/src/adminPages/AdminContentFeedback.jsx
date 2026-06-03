@@ -46,11 +46,13 @@ export default function AdminContentFeedback() {
       setActionLoadingId(`${feedback._id}-${action}`);
       const res = await api.patch(`/content-feedback/${feedback._id}/review`, { action });
 
-      setFeedbacks((prev) =>
-        prev.map((item) => (item._id === feedback._id ? res.data.feedback : item)),
-      );
-
-      if (action === "corrected") {
+      if (action === "ignored") {
+        // Le feedback est supprimé côté serveur : on le retire de la liste
+        setFeedbacks((prev) => prev.filter((item) => item._id !== res.data.deletedId));
+      } else {
+        setFeedbacks((prev) =>
+          prev.map((item) => (item._id === feedback._id ? res.data.feedback : item)),
+        );
         navigate(getEditLink(feedback));
       }
     } catch (reviewError) {

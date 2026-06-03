@@ -93,19 +93,28 @@ export const reviewContentFeedback = async (req, res) => {
       return res.status(400).json({ message: "Hành động không hợp lệ" });
     }
 
-    feedback.status = action;
+    // Nếu bỏ qua: xóa hẳn khỏi CSDL và thông báo cho người dùng
+    if (action === "ignored") {
+      await notifyUser(
+        feedback.submittedBy?._id || feedback.submittedBy,
+        "Admin/ kiểm duyệt viên đã xem xét và bỏ qua góp ý của bạn.",
+      );
+      await ContentFeedback.findByIdAndDelete(feedback._id);
+      return res.json({ message: "Đã bỏ qua và xóa góp ý", deletedId: feedback._id });
+    }
+
+    // action === "corrected"
+    feedback.status = "corrected";
     feedback.reviewedBy = req.user.id;
     feedback.reviewedAt = new Date();
     await feedback.save();
 
     const targetName = feedback.targetId?.name || "nội dung";
     const targetLabel = feedback.targetType === "disease" ? "bệnh" : "thuốc";
-    const notificationContent =
-      action === "corrected"
-        ? `Admin/ kiểm duyệt viên đã xem xét góp ý của bạn. Và đã sửa thông tin ${targetLabel} "${targetName}".`
-        : "Admin/ kiểm duyệt viên đã xem xét góp ý của bạn.";
-
-    await notifyUser(feedback.submittedBy?._id || feedback.submittedBy, notificationContent);
+    await notifyUser(
+      feedback.submittedBy?._id || feedback.submittedBy,
+      `Admin/ kiểm duyệt viên đã xem xét góp ý của bạn. Và đã sửa thông tin ${targetLabel} "${targetName}".`,
+    );
 
     const updatedFeedback = await ContentFeedback.findById(feedback._id)
       .populate("submittedBy", "name email")
@@ -113,7 +122,7 @@ export const reviewContentFeedback = async (req, res) => {
       .populate("targetId");
 
     res.json({
-      message: action === "corrected" ? "Đã đánh dấu đã sửa thông tin" : "Đã bỏ qua góp ý",
+      message: "Đã đánh dấu đã sửa thông tin",
       feedback: updatedFeedback,
     });
   } catch (error) {
